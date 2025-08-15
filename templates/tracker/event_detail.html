@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-header bg-primary text-white">
+      <div class="d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">{{ event.name }}</h4>
+        <div>
+          <a href="{% url 'edit_event' pk=event.id %}" class="btn btn-warning btn-sm">
+            <i class="fas fa-edit"></i> Edit
+          </a>
+          <a href="{% url 'add_source' event_pk=event.id %}" class="btn btn-light btn-sm">
+            <i class="fas fa-plus"></i> Add Source
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <!-- Event details -->
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <h5>Event Details</h5>
+          <p><strong>Theme:</strong>
+            <a href="{% url 'view_theme' pk=event.theme.id %}">{{ event.theme.name }}</a>
+          </p>
+          <p><strong>Date Identified:</strong> {{ event.date_identified|date:"Y-m-d" }}</p>
+          <p><strong>Risk Rating:</strong>
+            <span class="badge bg-{{ event.get_risk_color }}">{{ event.get_risk_rating_display }}</span>
+          </p>
+          <p><strong>Status:</strong> {{ event.get_status_display }}</p>
+          <p><strong>Controls in Place:</strong> {% if event.control_in_place %}Yes{% else %}No{% endif %}</p>
+        </div>
+
+        <div class="col-md-6">
+          <h5>Classification</h5>
+
+          <p><strong>Impacted Line of Business:</strong>
+            {% if event.impacted_lines %}
+              {% for lob in event.impacted_lines %}
+                {{ lob }}{% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            {% else %}
+              <em>None</em>
+            {% endif %}
+          </p>
+
+          <p><strong>Risk Taxonomy Lv1:</strong>
+            {% if risk_lv1_labels %}
+              {% for label in risk_lv1_labels %}
+                {{ label }}{% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            {% else %}
+              <em>None</em>
+            {% endif %}
+          </p>
+
+          <p><strong>Risk Taxonomy Lv2:</strong>
+            {% if risk_lv2_labels %}
+              {% for label in risk_lv2_labels %}
+                {{ label }}{% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            {% else %}
+              <em>None</em>
+            {% endif %}
+          </p>
+
+          <p><strong>Risk Taxonomy Lv3:</strong>
+            {% if risk_lv3_labels %}
+              {% for label in risk_lv3_labels %}
+                {{ label }}{% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            {% else %}
+              <em>None</em>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <h5>Description</h5>
+          <div class="border p-3 bg-light rounded">
+            {{ event.description|linebreaks }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Sources with filter -->
+      <div class="mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5>Sources ({{ sources.count }})</h5>
+
+          <form method="get" class="d-flex align-items-center gap-2">
+            <select name="source_type" class="form-select form-select-sm" onchange="this.form.submit()">
+              <option value="">All Types</option>
+              {% for type_id, type_name in source_types %}
+                <option value="{{ type_id }}" {% if selected_source_type == type_id %}selected{% endif %}>
+                  {{ type_name }}
+                </option>
+              {% endfor %}
+            </select>
+
+            <div class="form-check ms-2">
+              <input class="form-check-input" type="checkbox" id="showArchived" name="show_archived" value="1"
+                     {% if show_archived %}checked{% endif %} onchange="this.form.submit()">
+              <label class="form-check-label" for="showArchived">Show archived</label>
+            </div>
+
+            {% if selected_source_type or show_archived %}
+              <a href="{% url 'view_event' event_id=event.id %}" class="btn btn-sm btn-outline-secondary ms-2">
+                Clear
+              </a>
+            {% endif %}
+          </form>
+        </div>
+
+        {% if sources %}
+          <div class="table-responsive">
+            <table class="table table-hover align-middle" id="sourcesTable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Date</th>
+                  <th>Potential Impact</th>
+                  <th>Content</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for source in sources %}
+                <tr
+                  data-href="{% url 'source_detail' pk=source.id %}"
+                  {% if not source.is_active %}class="table-light text-muted"{% endif %}
+                >
+                  <td>
+                    <a href="{% url 'source_detail' pk=source.id %}">
+                      {{ source.name }}
+                    </a>
+                    {% if source.potential_impact_notes %}
+                      <span class="ms-1" title="{{ source.potential_impact_notes|escape }}">
+                        <i class="fas fa-info-circle"></i>
+                      </span>
+                    {% endif %}
+                  </td>
+
+                  <td><span class="badge bg-info">{{ source.get_source_type_display }}</span></td>
+                  <td>{{ source.source_date|date:"Y-m-d" }}</td>
+
+                  <td>
+                    {% if source.potential_impact == 'ESCALATING' %}
+                      <span title="Escalating"><i class="fas fa-arrow-up text-danger"></i> Escalating</span>
+                    {% elif source.potential_impact == 'MAINTAINING' %}
+                      <span title="Maintaining"><i class="fas fa-arrow-right text-warning"></i> Maintaining</span>
+                    {% elif source.potential_impact == 'DECREASING' %}
+                      <span title="Decreasing"><i class="fas fa-arrow-down text-success"></i> Decreasing</span>
+                    {% else %}
+                      <em>-</em>
+                    {% endif %}
+                  </td>
+
+                  <td>
+                    {% if source.link_or_file %}
+                      <a href="{{ source.link_or_file }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-external-link-alt"></i> Visit URL
+                      </a>
+                    {% elif source.file_upload %}
+                      <a href="{{ source.file_upload.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-download"></i> Download File
+                      </a>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+
+                  <td>
+                    {% if source.is_active %}
+                      <span class="badge bg-success">Active</span>
+                    {% else %}
+                      <span class="badge bg-secondary">Archived</span>
+                    {% endif %}
+                  </td>
+
+                  <td class="text-nowrap">
+                    <a href="{% url 'source_detail' pk=source.id %}" class="btn btn-sm btn-outline-primary" title="View">
+                      <i class="fas fa-eye"></i>
+                    </a>
+                    <a href="{% url 'edit_source' pk=source.id %}" class="btn btn-sm btn-outline-warning" title="Edit">
+                      <i class="fas fa-edit"></i>
+                    </a>
+
+                    {% if source.is_active %}
+                      <a href="{% url 'toggle_source_active' pk=source.id %}" class="btn btn-sm btn-outline-danger" title="Archive"
+                         onclick="return confirm('Archive this source? You can show it again using \"Show archived\".');">
+                        <i class="fas fa-archive"></i>
+                      </a>
+                    {% else %}
+                      <a href="{% url 'toggle_source_active' pk=source.id %}" class="btn btn-sm btn-outline-success" title="Restore"
+                         onclick="return confirm('Restore this source?');">
+                        <i class="fas fa-rotate-left"></i>
+                      </a>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="alert alert-info">
+            No sources found. <a href="{% url 'add_source' event_pk=event.id %}">Add the first source</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Fila clicable (sin interferir con botones/links dentro)
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('#sourcesTable tbody tr[data-href]').forEach(function (row) {
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function (e) {
+        if (e.target.closest('a,button,.btn')) return; // no interceptar clicks en botones
+        window.location = row.getAttribute('data-href');
+      });
+    });
+  });
+
+  // DataTables (si está disponible)
+  if (window.jQuery && $.fn.DataTable) {
+    $(function () {
+      $('#sourcesTable').DataTable({
+        order: [[2, 'desc']],
+        language: {
+          emptyTable: 'No sources available',
+          info: 'Showing _START_ to _END_ of _TOTAL_ sources',
+          infoEmpty: 'Showing 0 to 0 of 0 sources',
+          infoFiltered: '(filtered from _MAX_ total sources)',
+          lengthMenu: 'Show _MENU_ sources',
+          search: 'Search sources:',
+          paginate: {
+            first: 'First', last: 'Last', next: 'Next', previous: 'Previous'
+          }
+        }
+      });
+    });
+  }
+</script>
+{% endblock %}

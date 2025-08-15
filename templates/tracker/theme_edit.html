@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card">
+    <!-- Header -->
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">
+        <i class="fas fa-edit me-2"></i>Editing: {{ object.name }}
+      </h4>
+      <a href="{% url 'view_theme' pk=object.pk %}" class="btn btn-light btn-sm">
+        <i class="fas fa-arrow-left me-1"></i> Back to Theme
+      </a>
+    </div>
+
+    <form method="post" novalidate>
+      <div class="card-body">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">
+            {% for err in form.non_field_errors %}
+              <div><i class="fas fa-exclamation-circle me-1"></i>{{ err }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="row g-3">
+          <!-- Category -->
+          <div class="col-12">
+            <label for="{{ form.category.id_for_label }}" class="form-label">
+              Category <span class="text-danger">*</span>
+            </label>
+            {{ form.category }}
+            {% if form.category.errors %}
+              <div class="invalid-feedback d-block">
+                {{ form.category.errors|join:", " }}
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Name -->
+          <div class="col-12">
+            <label for="{{ form.name.id_for_label }}" class="form-label">
+              Name <span class="text-danger">*</span>
+            </label>
+            {{ form.name }}
+            {% if form.name.errors %}
+              <div class="invalid-feedback d-block">
+                {{ form.name.errors|join:", " }}
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Risk rating + live badge -->
+          <div class="col-md-6">
+            <label for="{{ form.risk_rating.id_for_label }}" class="form-label">
+              Risk rating <span class="text-danger">*</span>
+            </label>
+            <div class="d-flex align-items-center gap-2">
+              {{ form.risk_rating }}
+              <span id="riskPreviewBadge" class="badge"></span>
+            </div>
+            {% if form.risk_rating.errors %}
+              <div class="invalid-feedback d-block">
+                {{ form.risk_rating.errors|join:", " }}
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Onset timeline -->
+          <div class="col-md-6">
+            <label for="{{ form.onset_timeline.id_for_label }}" class="form-label">
+              Onset timeline <span class="text-danger">*</span>
+            </label>
+            {{ form.onset_timeline }}
+            {% if form.onset_timeline.errors %}
+              <div class="invalid-feedback d-block">
+                {{ form.onset_timeline.errors|join:", " }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="card-footer d-flex justify-content-end gap-2">
+        <a href="{% url 'view_theme' pk=object.pk %}" class="btn btn-outline-secondary">
+          <i class="fas fa-times me-1"></i> Cancel
+        </a>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save me-1"></i> Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  /* Mantener coherencia visual con el resto */
+  .form-control, .form-select { background-color: #fff; }
+</style>
+
+<script>
+  // Badge preview para Risk Rating
+  (function () {
+    const select = document.getElementById('id_risk_rating');
+    const badge  = document.getElementById('riskPreviewBadge');
+    if (!select || !badge) return;
+
+    const toLabel = {
+      'low': 'Low',
+      'moderate': 'Moderate',
+      'high': 'High',
+      'critical': 'Critical'
+    };
+    const toClass = {
+      'low': 'bg-success',
+      'moderate': 'bg-warning',
+      'high': 'bg-danger',
+      'critical': 'bg-dark'
+    };
+
+    function refreshBadge() {
+      const v = (select.value || '').toLowerCase();
+      badge.className = 'badge ' + (toClass[v] || 'bg-secondary');
+      badge.textContent = toLabel[v] || '—';
+    }
+
+    select.addEventListener('change', refreshBadge);
+    refreshBadge();
+  })();
+</script>
+{% endblock %}

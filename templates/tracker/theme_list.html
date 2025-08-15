@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <!-- Título dinámico -->
+    <h2 class="my-4">
+        {% if category %}
+        <i class="fas fa-tag me-2"></i>Themes: {{ category.name }}
+        {% else %}
+        <i class="fas fa-list-ul me-2"></i>All Themes
+        {% endif %}
+    </h2>
+
+    <!-- Tarjeta contenedora -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Theme List</h5>
+                <a href="{% url 'add_theme' %}" class="btn btn-light btn-sm">
+                    <i class="fas fa-plus me-1"></i> Add Theme
+                </a>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            <!-- Barra de búsqueda (Opcional) -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <form method="GET" action="">
+                        <div class="input-group">
+                            <input type="text" name="q" class="form-control" placeholder="Search themes..." 
+                                   value="{{ request.GET.q }}">
+                            <button type="submit" class="btn btn-outline-secondary">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabla de temas -->
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Risk</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for theme in themes %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'view_theme' pk=theme.id %}" class="text-decoration-none">
+                                    {{ theme.name }}
+                                </a>
+                            </td>
+                            <td>{{ theme.category.name }}</td>
+                            <td>
+                                <span class="badge bg-{{ theme.get_risk_color }}">
+                                    {{ theme.get_risk_rating_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'edit_theme' theme.id %}" class="btn btn-outline-warning">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'add_event' theme.id %}" class="btn btn-outline-primary">
+                                        <i class="fas fa-plus"></i> Event
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4">
+                                No themes found.
+                                <a href="{% url 'add_theme' %}" class="ms-2">Create one?</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Paginación -->
+        {% if is_paginated %}
+        <div class="card-footer bg-white">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+                            Previous
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+                            {{ num }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+                            Next
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+<style>
+    .search-loading {
+        position: relative;
+    }
+    .search-loading::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 40px;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        display: none;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<!-- Actualiza tu script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const searchButton = document.getElementById('searchButton');
+    const searchIcon = document.getElementById('searchIcon');
+    const searchSpinner = document.getElementById('searchSpinner');
+    const themeList = document.getElementById('themeList');
+    let searchTimeout;
+    
+    // Función para mostrar loading
+    function showLoading(show) {
+        if (show) {
+            searchIcon.classList.add('d-none');
+            searchSpinner.classList.remove('d-none');
+            searchButton.disabled = true;
+            themeList.classList.add('opacity-50');
+        } else {
+            searchIcon.classList.remove('d-none');
+            searchSpinner.classList.add('d-none');
+            searchButton.disabled = false;
+            themeList.classList.remove('opacity-50');
+        }
+    }
+    
+    // Búsqueda con debounce
+    function performSearch() {
+        showLoading(true);
+        
+        // Limpiar timeout anterior
+        clearTimeout(searchTimeout);
+        
+        // Esperar 500ms después de la última tecla presionada
+        searchTimeout = setTimeout(() => {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            const currentUrl = new URL(window.location.href);
+            
+            // Actualizar parámetro de búsqueda en la URL
+            if (searchTerm) {
+                currentUrl.searchParams.set('q', searchTerm);
+            } else {
+                currentUrl.searchParams.delete('q');
+            }
+            history.replaceState(null, '', currentUrl.toString());
+            
+            // Filtrar elementos
+            const themeItems = document.querySelectorAll('.theme-item');
+            let hasResults = false;
+            
+            themeItems.forEach(item => {
+                const textContent = item.textContent.toLowerCase();
+                if (textContent.includes(searchTerm)) {
+                    item.style.display = 'block';
+                    hasResults = true;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            // Manejar "no hay resultados"
+            const noResults = document.getElementById('noResults');
+            if (noResults) {
+                noResults.style.display = hasResults ? 'none' : 'block';
+            }
+            
+            showLoading(false);
+        }, 500); // Tiempo de debounce
+    }
+    
+    // Event listeners
+    searchInput.addEventListener('input', performSearch);
+    searchButton.addEventListener('click', performSearch);
+    
+    // Cargar búsqueda inicial si hay parámetro en URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialSearch = urlParams.get('q');
+    if (initialSearch) {
+        searchInput.value = initialSearch;
+        performSearch();
+    }
+});
+</script>

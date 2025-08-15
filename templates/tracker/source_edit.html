@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-header bg-warning text-dark">
+      <h4><i class="fas fa-edit me-2"></i>Edit Source</h4>
+    </div>
+
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="row g-3">
+          <!-- Columna izquierda -->
+          <div class="col-md-6">
+            <!-- Name -->
+            <div class="mb-3">
+              <label for="{{ form.name.id_for_label }}" class="form-label">Name</label>
+              {{ form.name }}
+              {% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Source Type -->
+            <div class="mb-3">
+              <label for="{{ form.source_type.id_for_label }}" class="form-label">Source Type</label>
+              {{ form.source_type }}
+              <div class="form-text">PDF, DOC o EMAIL.</div>
+              {% if form.source_type.errors %}<div class="invalid-feedback d-block">{{ form.source_type.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Source Date -->
+            <div class="mb-3">
+              <label for="{{ form.source_date.id_for_label }}" class="form-label">Source Date</label>
+              {{ form.source_date }}
+              {% if form.source_date.errors %}<div class="invalid-feedback d-block">{{ form.source_date.errors|join:", " }}</div>{% endif %}
+            </div>
+          </div>
+
+          <!-- Columna derecha -->
+          <div class="col-md-6">
+            <!-- URL -->
+            <div class="mb-3" id="urlField" style="display:none;">
+              <label for="{{ form.link_or_file.id_for_label }}" class="form-label">URL</label>
+              {{ form.link_or_file }}
+              <div class="form-text">http(s):// o mailto:…</div>
+              {% if form.link_or_file.errors %}<div class="invalid-feedback d-block">{{ form.link_or_file.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Archivo -->
+            <div class="mb-3" id="fileField" style="display:none;">
+              <label for="{{ form.file_upload.id_for_label }}" class="form-label">File Upload</label>
+              {{ form.file_upload }}
+              {% if form.instance.file_upload %}
+                <div class="mt-2">
+                  Currently: <a href="{{ form.instance.file_upload.url }}" target="_blank">{{ form.instance.file_upload.name }}</a>
+                  <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" name="file_upload-clear" id="file_upload-clear_id">
+                    <label class="form-check-label" for="file_upload-clear_id">Clear</label>
+                  </div>
+                </div>
+              {% endif %}
+              <div class="form-text">Aceptados: .pdf, .doc, .docx, .eml, .msg (máx. 5MB)</div>
+              {% if form.file_upload.errors %}<div class="invalid-feedback d-block">{{ form.file_upload.errors|join:", " }}</div>{% endif %}
+            </div>
+          </div>
+
+          <!-- Campos de texto -->
+          <div class="col-12">
+            <!-- Summary -->
+            <div class="mb-3">
+              <label for="{{ form.summary.id_for_label }}" class="form-label">Summary</label>
+              {{ form.summary }}
+              {% if form.summary.errors %}<div class="invalid-feedback d-block">{{ form.summary.errors|join:", " }}</div>{% endif %}
+            </div>
+
+            <!-- Potential Impact Trend (radios) + Notes -->
+            <div class="row">
+              <div class="col-md-4">
+                <label class="form-label d-block">Potential Impact Trend</label>
+                {% with current=form.potential_impact.value %}
+                <div class="btn-group" role="group" aria-label="Potential Impact">
+                  <input type="radio" class="btn-check" name="potential_impact" id="pi_up" value="ESCALATING"
+                         {% if current == "ESCALATING" %}checked{% endif %}>
+                  <label class="btn btn-outline-danger" for="pi_up" title="Risk is Escalating">
+                    <i class="fas fa-arrow-up"></i> Escalating
+                  </label>
+
+                  <input type="radio" class="btn-check" name="potential_impact" id="pi_flat" value="MAINTAINING"
+                         {% if current == "MAINTAINING" %}checked{% endif %}>
+                  <label class="btn btn-outline-warning" for="pi_flat" title="Risk is Maintaining">
+                    <i class="fas fa-arrow-right"></i> Maintaining
+                  </label>
+
+                  <input type="radio" class="btn-check" name="potential_impact" id="pi_down" value="DECREASING"
+                         {% if current == "DECREASING" %}checked{% endif %}>
+                  <label class="btn btn-outline-success" for="pi_down" title="Risk is Decreasing">
+                    <i class="fas fa-arrow-down"></i> Decreasing
+                  </label>
+                </div>
+                {% endwith %}
+                {% if form.potential_impact.errors %}<div class="invalid-feedback d-block">{{ form.potential_impact.errors|join:", " }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-8">
+                <label class="form-label">Potential Impact Notes</label>
+                {{ form.potential_impact_notes }}
+                {% if form.potential_impact_notes.errors %}<div class="invalid-feedback d-block">{{ form.potential_impact_notes.errors|join:", " }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Event (hidden) -->
+        {{ form.event }}
+
+        <!-- Change Impact oculto para no romper el modelo -->
+        <input type="hidden" name="change_impact" value="N/A">
+
+        <div class="d-flex justify-content-between mt-4">
+          <a href="{% url 'view_event' event_id=object.event.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Cancel
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i> Update Source
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  function toggleByType() {
+    var typeSel = document.getElementById('id_source_type');
+    var urlField = document.getElementById('urlField');
+    var fileField = document.getElementById('fileField');
+    if (!typeSel) return;
+
+    var v = typeSel.value;
+
+    if (!v) {
+      urlField.style.display = 'none';
+      fileField.style.display = 'none';
+      return;
+    }
+
+    if (v === 'PDF' || v === 'DOC') {
+      urlField.style.display = 'none';
+      fileField.style.display = '';
+      var urlInput = document.getElementById('id_link_or_file');
+      if (urlInput) urlInput.value = '';
+    } else if (v === 'EMAIL') {
+      urlField.style.display = '';
+      fileField.style.display = '';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var typeSel = document.getElementById('id_source_type');
+    if (typeSel) {
+      toggleByType();                // respeta el valor existente al cargar
+      typeSel.addEventListener('change', toggleByType);
+    }
+
+    var forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function(form) {
+      form.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  });
+})();
+</script>
+{% endblock %}

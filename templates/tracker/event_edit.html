@@ -1,0 +1,606 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4>
+                <i class="fas fa-{% if creating %}plus-circle{% else %}edit{% endif %} me-2"></i>
+                {% if creating %}Add New{% else %}Edit{% endif %} Event
+                {% if theme %} for {{ theme.name }}{% endif %}
+            </h4>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{% if creating %}{% url 'add_event' theme_pk=theme.pk %}{% else %}{% url 'edit_event' pk=event.pk %}{% endif %}" id="event-form">
+                {% csrf_token %}
+                
+                <!-- First row -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Theme</label>
+                            <select name="theme" class="form-select" id="id_theme" required>
+                                {% for value, label in form.theme.field.choices %}
+                                    <option value="{{ value }}" {% if form.theme.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.theme.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.theme.errors|join:", " }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="form-group mt-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" name="name" class="form-control title-input" 
+                                   value="{{ form.name.value|default_if_none:'' }}"
+                                   placeholder="Enter event name (max 30 characters)" maxlength="30" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Date Identified</label>
+                            <input type="date" name="date_identified" class="form-control" 
+                                   value="{{ form.date_identified.value|date:'Y-m-d' }}" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Risk Rating, Status, Control -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="form-label">Risk Rating</label>
+                            <select name="risk_rating" class="form-select risk-rating" required>
+                                {% for value, label in form.risk_rating.field.choices %}
+                                    <option value="{{ value }}" 
+                                            class="risk-option-{{ value|lower }}"
+                                            {% if form.risk_rating.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>
+                                        <i class="fas fa-{% if value == 'LOW' %}check-circle{% elif value == 'MEDIUM' %}exclamation-circle{% elif value == 'HIGH' %}exclamation-triangle{% else %}skull-crossbones{% endif %} me-1"></i>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select status-select" required>
+                                {% for value, label in form.status.field.choices %}
+                                    <option value="{{ value }}" {% if form.status.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group form-switch d-flex align-items-center pt-3">
+                            <input type="checkbox" name="control_in_place" class="form-check-input switch me-2" 
+                                   id="id_control_in_place" {% if form.control_in_place.value %}checked{% endif %}>
+                            <label class="form-check-label" for="id_control_in_place">Control in Place</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Impacted Business Lines -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <label class="form-label">Impacted Business Lines</label>
+                        <div class="business-lines-container">
+                            {% for checkbox in form.impacted_lines %}
+                                <div class="form-check form-check-inline">
+                                    {{ checkbox }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Risk Taxonomy -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label">Risk Taxonomy Level 1 <span class="text-danger">*</span></label>
+                        <div class="taxonomy-container" id="taxonomy-lv1-container">
+                            {% for lv1 in RISK_TAXONOMY_LV1 %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" 
+                                       name="risk_taxonomy_lv1" value="{{ lv1.0 }}" 
+                                       id="lv1-{{ lv1.0|slugify }}"
+                                       {% if lv1.0 in form.risk_taxonomy_lv1.value %}checked{% endif %}>
+                                <label class="form-check-label" for="lv1-{{ lv1.0|slugify }}">
+                                    {{ lv1.1 }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div id="lv1-error" class="invalid-feedback" style="display: none;">
+                            Please select at least one Level 1 option
+                        </div>
+                    </div>
+                    <div class="col-md-4" id="lv2-container" style="display: none;">
+                        <label class="form-label">Risk Taxonomy Level 2 <span class="text-danger">*</span></label>
+                        <div class="taxonomy-container" id="lv2-options">
+                            <!-- Dynamically populated -->
+                        </div>
+                        <div id="lv2-error" class="invalid-feedback" style="display: none;">
+                            Please select at least one Level 2 option
+                        </div>
+                    </div>
+                    <div class="col-md-4" id="lv3-container" style="display: none;">
+                        <label class="form-label">Risk Taxonomy Level 3 <span class="text-danger">*</span></label>
+                        <div class="taxonomy-container" id="lv3-options">
+                            <!-- Dynamically populated -->
+                        </div>
+                        <div id="lv3-error" class="invalid-feedback" style="display: none;">
+                            Please select at least one Level 3 option
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Description -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control full-width" rows="3"
+                                  placeholder="Add a description to the event" required>{{ form.description.value|default_if_none:'' }}</textarea>
+                    </div>
+                </div>
+                
+                <!-- Buttons -->
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% if theme %}{% url 'view_theme' pk=theme.id %}{% else %}{% url 'dashboard' %}{% endif %}" 
+                       class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary" id="submit-btn">
+                        <i class="fas fa-save me-1"></i> Save Event
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% if form.errors %}
+    <div class="alert alert-danger mt-3">
+        <strong>Error!</strong> Please fix the following issues:
+        <ul>
+        {% for field, errors in form.errors.items %}
+            {% for error in errors %}
+            <li>
+                {% if field == "risk_taxonomy_lv2" %}
+                    Level 2: {{ error }}
+                {% elif field == "risk_taxonomy_lv3" %}
+                    Level 3: {{ error }}
+                {% else %}
+                    {{ field|title }}: {{ error }}
+                {% endif %}
+            </li>
+            {% endfor %}
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  /* =========================
+     Business Lines: "All"
+  ========================== */
+  const allCheckbox = document.querySelector('input[name="impacted_lines"][value="All"]');
+  if (allCheckbox) {
+    const otherCheckboxes = document.querySelectorAll('input[name="impacted_lines"]:not([value="All"])');
+
+    const syncAllState = () => {
+      const allChecked = Array.from(otherCheckboxes).every(cb => cb.checked);
+      if (allChecked) {
+        allCheckbox.checked = true;
+        otherCheckboxes.forEach(cb => cb.disabled = true);
+      } else {
+        otherCheckboxes.forEach(cb => cb.disabled = false);
+      }
+    };
+
+    allCheckbox.addEventListener('change', function () {
+      otherCheckboxes.forEach(cb => {
+        cb.checked = allCheckbox.checked;
+        cb.disabled = allCheckbox.checked;
+      });
+    });
+
+    otherCheckboxes.forEach(cb => {
+      cb.addEventListener('change', function () {
+        if (this.checked) {
+          allCheckbox.checked = false;
+        }
+        syncAllState();
+      });
+    });
+
+    if (allCheckbox.checked) {
+      otherCheckboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
+    } else {
+      syncAllState();
+    }
+  }
+
+  /* =========================
+     Taxonomy JSON (robusto)
+  ========================== */
+  let taxonomyData = { hierarchical: [], flat: {} };
+  try {
+    taxonomyData = JSON.parse('{{ taxonomy_json|escapejs }}');
+  } catch (e) {
+    console.error('taxonomy_json parse error:', e);
+  }
+  // disponible global si algo más lo necesita
+  window.taxonomyData = taxonomyData;
+
+  /* =========================
+     Utilidades / Estado
+  ========================== */
+  function generateId(text) {
+    return String(text).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  }
+
+  const currentSelections = { lv1: [], lv2: [], lv3: [] };
+
+  /* =========================
+     LV1 -> listeners
+  ========================== */
+  document.querySelectorAll('input[name="risk_taxonomy_lv1"]').forEach(el => {
+    el.addEventListener('change', function () {
+      currentSelections.lv1 = Array.from(
+        document.querySelectorAll('input[name="risk_taxonomy_lv1"]:checked')
+      ).map(x => x.value);
+      updateLv2Options();
+    });
+  });
+
+  /* =========================
+     Construcción de LV2
+  ========================== */
+  function updateLv2Options() {
+    const lv2Container = document.getElementById('lv2-container');
+    const lv2Options = document.getElementById('lv2-options');
+
+    const previousLv2 = Array.from(
+      document.querySelectorAll('input[name="risk_taxonomy_lv2"]:checked')
+    ).map(x => x.value);
+
+    if (currentSelections.lv1.length > 0) {
+      document.getElementById('lv1-error').style.display = 'none';
+
+      let html = '';
+      currentSelections.lv1.forEach(lv1Key => {
+        const lv1Data = taxonomyData.hierarchical.find(it => it.key === lv1Key);
+        if (!lv1Data) return;
+
+        html += `<div class="taxonomy-group mb-2">`;
+        html += `<div class="fw-bold small text-muted">${lv1Data.label}</div>`;
+
+        (lv1Data.children || []).forEach(lv2 => {
+          // marcado si estaba previamente seleccionado o viene con selected=true del backend
+          const shouldCheck = previousLv2.includes(lv2.key) || !!lv2.selected;
+          html += `
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox"
+                     name="risk_taxonomy_lv2" value="${lv2.key}"
+                     id="lv2-${generateId(lv2.key)}" ${shouldCheck ? 'checked' : ''}>
+              <label class="form-check-label" for="lv2-${generateId(lv2.key)}">${lv2.label}</label>
+            </div>
+          `;
+        });
+
+        html += `</div>`;
+      });
+
+      lv2Options.innerHTML = html;
+      lv2Container.style.display = 'block';
+
+      // sincroniza estado
+      currentSelections.lv2 = Array.from(
+        document.querySelectorAll('input[name="risk_taxonomy_lv2"]:checked')
+      ).map(x => x.value);
+
+      // listeners LV2
+      document.querySelectorAll('input[name="risk_taxonomy_lv2"]').forEach(el => {
+        el.addEventListener('change', function () {
+          currentSelections.lv2 = Array.from(
+            document.querySelectorAll('input[name="risk_taxonomy_lv2"]:checked')
+          ).map(x => x.value);
+          updateLv3Options();
+        });
+      });
+
+      // construir LV3
+      updateLv3Options();
+    } else {
+      // limpiar LV2 y LV3 si no hay LV1
+      lv2Options.innerHTML = '';
+      lv2Container.style.display = 'none';
+      document.getElementById('lv3-options').innerHTML = '';
+      document.getElementById('lv3-container').style.display = 'none';
+      currentSelections.lv2 = [];
+      currentSelections.lv3 = [];
+    }
+  }
+
+  /* =========================
+     Construcción de LV3
+  ========================== */
+  function updateLv3Options() {
+    const lv3Container = document.getElementById('lv3-container');
+    const lv3Options = document.getElementById('lv3-options');
+
+    const previousLv3 = Array.from(
+      document.querySelectorAll('input[name="risk_taxonomy_lv3"]:checked')
+    ).map(x => x.value);
+
+    if (currentSelections.lv2.length > 0) {
+      document.getElementById('lv2-error').style.display = 'none';
+
+      let html = '';
+      currentSelections.lv2.forEach(lv2Key => {
+        // buscar el objeto LV2 dentro de cualquier LV1
+        let parentLv2 = null;
+        for (const lv1 of taxonomyData.hierarchical) {
+          const found = (lv1.children || []).find(c => c.key === lv2Key);
+          if (found) { parentLv2 = found; break; }
+        }
+        if (!parentLv2 || !(parentLv2.children || []).length) return;
+
+        html += `<div class="taxonomy-group mb-2">`;
+        html += `<div class="fw-bold small text-muted">${parentLv2.label}</div>`;
+
+        parentLv2.children.forEach(lv3 => {
+          const shouldCheck = previousLv3.includes(lv3.key) || !!lv3.selected;
+          html += `
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox"
+                     name="risk_taxonomy_lv3" value="${lv3.key}"
+                     id="lv3-${generateId(lv3.key)}" ${shouldCheck ? 'checked' : ''}>
+              <label class="form-check-label" for="lv3-${generateId(lv3.key)}">${lv3.label}</label>
+            </div>
+          `;
+        });
+
+        html += `</div>`;
+      });
+
+      lv3Options.innerHTML = html;
+      lv3Container.style.display = 'block';
+
+      // sincroniza estado
+      currentSelections.lv3 = Array.from(
+        document.querySelectorAll('input[name="risk_taxonomy_lv3"]:checked')
+      ).map(x => x.value);
+    } else {
+      lv3Options.innerHTML = '';
+      lv3Container.style.display = 'none';
+      currentSelections.lv3 = [];
+    }
+  }
+
+  /* =========================
+     Validación antes de enviar
+  ========================== */
+  document.getElementById('submit-btn').addEventListener('click', function (e) {
+    let isValid = true;
+
+    // reset
+    document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    document.querySelectorAll('.invalid-feedback').forEach(el => el.style.display = 'none');
+
+    // requeridos básicos
+    const requiredFields = [
+        {id: 'id_theme', message: 'Theme is required'},
+        {name: 'name', message: 'Name is required'},
+        {name: 'date_identified', message: 'Date identified is required'},
+        {name: 'description', message: 'Description is required'},
+        {name: 'status', message: 'Status is required'},
+        {name: 'risk_rating', message: 'Risk rating is required'} 
+    ];
+    requiredFields.forEach(field => {
+      const element = field.id ? document.getElementById(field.id) : document.querySelector(`[name="${field.name}"]`);
+      if (element && !element.value) {
+        element.classList.add('is-invalid');
+        isValid = false;
+      }
+    });
+
+    // LV1 obligatorio
+    if (document.querySelectorAll('input[name="risk_taxonomy_lv1"]:checked').length === 0) {
+      document.getElementById('taxonomy-lv1-container').classList.add('is-invalid');
+      document.getElementById('lv1-error').style.display = 'block';
+      isValid = false;
+    }
+
+    // LV2 obligatorio si visible
+    if (document.getElementById('lv2-container').style.display !== 'none' &&
+        document.querySelectorAll('input[name="risk_taxonomy_lv2"]:checked').length === 0) {
+      document.getElementById('lv2-options').closest('.col-md-4').classList.add('is-invalid');
+      document.getElementById('lv2-error').style.display = 'block';
+      isValid = false;
+    }
+
+    // LV3 obligatorio si visible
+    if (document.getElementById('lv3-container').style.display !== 'none' &&
+        document.querySelectorAll('input[name="risk_taxonomy_lv3"]:checked').length === 0) {
+      document.getElementById('lv3-options').closest('.col-md-4').classList.add('is-invalid');
+      document.getElementById('lv3-error').style.display = 'block';
+      isValid = false;
+    }
+
+    if (!isValid) {
+      e.preventDefault();
+      const target = document.querySelector('.is-invalid') || document.querySelector('.invalid-feedback[style*="block"]');
+      if (target && target.scrollIntoView) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  });
+
+  /* =========================
+     Bootstrap al cargar (edición y creación)
+     - Lee LV1 marcados (servidor ya marca LV1 en edición)
+     - Construye LV2 y LV3 y marca lo que venga con selected=true
+  ========================== */
+  function bootstrapTaxonomyFromDOM() {
+    currentSelections.lv1 = Array.from(
+      document.querySelectorAll('input[name="risk_taxonomy_lv1"]:checked')
+    ).map(x => x.value);
+
+    if (currentSelections.lv1.length > 0) {
+      updateLv2Options();   // construye LV2 (y marca según selected/pre-checked)
+      updateLv3Options();   // construye LV3 (y marca según selected/pre-checked)
+    } else {
+      // si no hay LV1 marcados al cargar, oculta LV2/LV3 hasta que el usuario seleccione
+      document.getElementById('lv2-container').style.display = 'none';
+      document.getElementById('lv3-container').style.display = 'none';
+    }
+  }
+
+  bootstrapTaxonomyFromDOM();
+});
+</script>
+
+
+<style>
+    .form-control, .form-select {
+        min-height: 38px;
+    }
+    
+    .title-input {
+        font-size: 1.25rem;
+        font-weight: 500;
+    }
+    
+    textarea.form-control {
+        min-height: 100px;
+    }
+    
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 4px;
+    }
+    
+    .invalid-feedback {
+        display: block;
+        color: #dc3545;
+    }
+    
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
+    .card-header {
+        padding: 1rem 1.25rem;
+    }
+    
+    /* Risk Rating colors with background */
+    .risk-option-low {
+        background-color: #28a745;
+        color: white;
+        font-weight: bold;
+    }
+    
+    .risk-option-medium {
+        background-color: #ffc107;
+        color: white;
+        font-weight: bold;
+    }
+    
+    .risk-option-high {
+        background-color: #fd7e14;
+        color: white;
+        font-weight: bold;
+    }
+    
+    .risk-option-critical {
+        background-color: #dc3545;
+        color: white;
+        font-weight: bold;
+    }
+    
+    /* Make sure the options show properly in dropdown */
+    select.risk-rating option {
+        padding: 8px;
+        margin: 4px 0;
+        border-radius: 4px;
+    }
+    
+    /* Selected item in dropdown */
+    select.risk-rating option:checked {
+        font-weight: bold;
+    }
+    
+    /* Switch styles */
+    .form-switch .form-check-input {
+        width: 2.5em;
+        height: 1.3em;
+        margin-right: 0.5em;
+    }
+    
+    /* Vertical alignment for switch */
+    .d-flex.align-items-center {
+        min-height: 38px;
+    }
+    
+    /* Business lines container */
+    .business-lines-container {
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    /* Taxonomy styles */
+    .taxonomy-container {
+        max-height: 300px;
+        overflow-y: auto;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .full-width {
+        width: 100%;
+    }
+    
+    /* Validation styles */
+    .is-invalid {
+        border: 1px solid #dc3545 !important;
+    }
+    
+    .is-invalid ~ label {
+        color: #dc3545;
+    }
+    
+    /* Taxonomy group styles */
+    .taxonomy-group {
+        border-left: 3px solid #dee2e6;
+        padding-left: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .taxonomy-group .form-check {
+        margin-left: 5px;
+    }
+    
+    .taxonomy-group .text-muted {
+        padding-bottom: 3px;
+        border-bottom: 1px dashed #dee2e6;
+        margin-bottom: 5px;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .form-check-inline {
+            display: block;
+            margin-right: 0;
+        }
+    }
+</style>
+{% endblock %}

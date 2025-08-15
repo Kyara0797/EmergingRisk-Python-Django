@@ -1,0 +1,4 @@
+<option value="">---------</option>
+{% for event in events %}
+<option value="{{ event.id }}">{{ event.name }}</option>
+{% endfor %}

@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+  <h2 class="my-4">Dashboard</h2>
+
+  <!-- Categories -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0"><i class="fas fa-tags me-2"></i>Categories</h5>
+        </div>
+        <div class="card-body">
+          <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-4">
+            {% for category in categories %}
+            <div class="col">
+              <div class="card h-100 text-center border-0 shadow-sm hover-shadow transition-all">
+                <div class="card-body p-3 d-flex flex-column">
+                  <div class="mb-3">
+                    {% if category.name == "Political" %}
+                      <i class="fas fa-landmark fa-2x text-primary"></i>
+                    {% elif category.name == "Economic" %}
+                      <i class="fas fa-chart-line fa-2x text-success"></i>
+                    {% elif category.name == "Social" %}
+                      <i class="fas fa-users fa-2x text-info"></i>
+                    {% elif category.name == "Technological" %}
+                      <i class="fas fa-microchip fa-2x text-purple"></i>
+                    {% elif category.name == "Legal" %}
+                      <i class="fas fa-gavel fa-2x text-warning"></i>
+                    {% elif category.name == "Environmental" %}
+                      <i class="fas fa-leaf fa-2x text-success"></i>
+                    {% endif %}
+                  </div>
+                  <h6 class="card-title mb-3 fw-bold">{{ category.name }}</h6>
+                  <a href="{% url 'theme_list_by_category' category_id=category.id %}"
+                     class="btn btn-sm btn-outline-primary align-self-center mt-auto py-1 px-3">
+                    View Themes
+                  </a>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Themes & Events -->
+  <div class="row mt-4">
+    <!-- Themes -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-secondary text-white">
+          <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Recent Themes</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover table-clickable table-fixed" id="themesTable">
+              <thead>
+                <tr>
+                  <th class="col-name">Name</th>
+                  <th>Category</th>
+                  <th>Risk</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for theme in themes %}
+                <tr data-href="{% url 'theme_detail' pk=theme.id %}">
+                  <td>
+                    <a href="{% url 'theme_detail' pk=theme.id %}" class="truncate" title="{{ theme.name }}">
+                      {{ theme.name }}
+                    </a>
+                  </td>
+                  <td class="truncate" title="{{ theme.category }}">{{ theme.category }}</td>
+                  <td>
+                    <span class="badge bg-{{ theme.get_risk_color }}">{{ theme.risk_rating }}</span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Events -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header bg-secondary text-white">
+          <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Recent Events</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover table-clickable table-fixed" id="eventsTable">
+              <thead>
+                <tr>
+                  <th class="col-name">Name</th>
+                  <th>Theme</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for event in events %}
+                <tr data-href="{% url 'view_event' event_id=event.id %}">
+                  <td>
+                    <a href="{% url 'view_event' event_id=event.id %}" class="truncate" title="{{ event.name }}">
+                      {{ event.name }}
+                    </a>
+                  </td>
+                  <td class="truncate" title="{{ event.theme }}">{{ event.theme }}</td>
+                  <td>{{ event.date_identified|date:"Y-m-d" }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(function () {
+  // ----- Tipo de orden para riesgo -----
+  $.fn.dataTable.ext.type.order['risk-pre'] = function (d) {
+    switch ((d || '').toString().toLowerCase()) {
+      case 'critical': return 0;
+      case 'high':     return 1;
+      case 'moderate': return 2;
+      case 'low':      return 3;
+      default:         return 4;
+    }
+  };
+
+  // ----- Themes -----
+  $('#themesTable').DataTable({
+    autoWidth: false,
+    columnDefs: [
+      { targets: 0, width: '55%', className: 'dt-col-name' },
+      { targets: 1, width: '25%' },
+      { targets: 2, type: 'risk', width: '20%' }
+    ],
+    order: [[2, 'asc']],
+    pageLength: 5,
+    language: {
+      emptyTable: 'No themes available',
+      info: 'Showing _START_ to _END_ of _TOTAL_ themes',
+      infoEmpty: 'Showing 0 to 0 of 0 themes',
+      infoFiltered: '(filtered from _MAX_ total themes)',
+      lengthMenu: 'Show _MENU_ themes',
+      search: 'Search themes:',
+      paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Previous' }
+    }
+  });
+
+  // ----- Events -----
+  $('#eventsTable').DataTable({
+    autoWidth: false,
+    columnDefs: [
+      { targets: 0, width: '50%', className: 'dt-col-name' },
+      { targets: 1, width: '30%' },
+      { targets: 2, width: '20%' }
+    ],
+    order: [[0, 'asc']],
+    pageLength: 5,
+    language: {
+      emptyTable: 'No events available',
+      info: 'Showing _START_ to _END_ of _TOTAL_ events',
+      infoEmpty: 'Showing 0 to 0 of 0 events',
+      infoFiltered: '(filtered from _MAX_ total events)',
+      lengthMenu: 'Show _MENU_ events',
+      search: 'Search events:',
+      paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Previous' }
+    }
+  });
+
+  // ----- Filas clicables (delegación) -----
+  function makeTableClickable(tableSelector) {
+    const $table = $(tableSelector);
+    $table.on('click', 'tbody tr', function (e) {
+      // no interceptar clicks en links/botones
+      if ($(e.target).closest('a,button,.btn').length) return;
+      const href = $(this).attr('data-href');
+      if (href) window.location = href;
+    });
+  }
+  makeTableClickable('#themesTable');
+  makeTableClickable('#eventsTable');
+});
+</script>
+
+<style>
+/* color que no existe en Bootstrap por defecto */
+.text-purple { color: #6f42c1; }
+
+/* Tablas clicables */
+.table-clickable tbody tr { cursor: pointer; }
+
+/* Mantener columnas estables para truncar bien */
+.table-fixed { table-layout: fixed; }
+
+/* Truncado elegante (1 línea) */
+.truncate {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+/* Asegura que la primera columna tenga espacio para nombres largos */
+#themesTable .dt-col-name, #eventsTable .dt-col-name { width: 55%; }
+
+/* Evitar que badges/íconos rompan layout */
+table .badge { font-weight: 600; }
+
+/* Suavizar sombras de cards */
+.card { box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075); }
+</style>
+{% endblock %}

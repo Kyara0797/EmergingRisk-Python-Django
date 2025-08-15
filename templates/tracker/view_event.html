@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ event.name }}</h2>
+    <div>
+        <a href="{% url 'add_source' event_pk=event.id %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add Source
+        </a>
+        <a href="{% url 'edit_event' pk=event.id %}" class="btn btn-warning btn-sm">
+            <i class="fas fa-edit"></i> Edit
+        </a>
+        <a href="{% url 'delete_event' pk=event.id %}" class="btn btn-danger btn-sm">
+            <i class="fas fa-trash"></i> Delete
+        </a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        Event Details
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <p><strong>Theme:</strong> {{ event.theme }}</p>
+                <p><strong>Date Identified:</strong> {{ event.date_identified }}</p>
+                <p><strong>Status:</strong> {{ event.status }}</p>
+                <p><strong>Risk Rating:</strong> {{ event.get_risk_rating_display }}</p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Impacted Line of Business:</strong> 
+                    {% for lob in event.impacted_lines %}
+                        {{ lob }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </p>
+                <p><strong>Risk Taxonomy Lv2:</strong> 
+                    {% for tax in event.risk_taxonomy_lv2.all %}
+                        {{ tax.name }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </p>
+                <p><strong>Risk Taxonomy Lv3:</strong> 
+                    {% for tax in event.risk_taxonomy_lv3.all %}
+                        {{ tax.name }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Controls in Place:</strong> {% if event.control_in_place %}Yes{% else %}No{% endif %}</p>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <p><strong>Description:</strong></p>
+                <p>{{ event.description }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <h5 class="mb-0 me-3">
+                <i class="fas fa-file-alt me-2"></i>Sources
+                <span class="badge bg-primary rounded-pill ms-2">{{ sources.count }}</span>
+            </h5>
+            
+            <!-- Filtro por tipo de source -->
+            <form method="get" class="d-flex">
+                <select name="source_type" class="form-select form-select-sm me-2" onchange="this.form.submit()">
+                    <option value="">All Types</option>
+                    {% for type_id, type_name in source_types %}
+                        <option value="{{ type_id }}" {% if selected_source_type == type_id %}selected{% endif %}>
+                            {{ type_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                {% if selected_source_type %}
+                    <a href="{% url 'view_event' event_id=event.id %}" class="btn btn-sm btn-outline-secondary">
+                        Clear Filter
+                    </a>
+                {% endif %}
+            </form>
+        </div>
+        
+        <a href="{% url 'add_source' event_pk=event.id %}" class="btn btn-sm btn-success">
+            <i class="fas fa-plus me-1"></i> Add Source
+        </a>
+    </div>
+    <div class="card-body">
+        {% if sources %}
+        <div class="table-responsive">
+            <table class="table table-hover" id="sourcesTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Date</th>
+                        <th>Content</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for source in sources %}
+                    <tr>
+                        <td>{{ source.name }}</td>
+                        <td><span class="badge bg-info">{{ source.get_source_type_display }}</span></td>
+                        <td>{{ source.source_date|date:"Y-m-d" }}</td>
+                        <td>
+                            {% if source.link_or_file %}
+                                <a href="{{ source.link_or_file }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-external-link-alt"></i> Visit URL
+                                </a>
+                            {% elif source.file_upload %}
+                                <a href="{{ source.file_upload.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-download"></i> Download File
+                                </a>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-outline-warning" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="#" class="btn btn-sm btn-outline-danger" title="Delete">
+                                <i class="fas fa-trash-alt"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            No sources have been added yet.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        $('#sourcesTable').DataTable({
+            "order": [[2, "desc"]],
+            "language": {
+                "emptyTable": "No sources available",
+                "info": "Showing _START_ to _END_ of _TOTAL_ sources",
+                "infoEmpty": "Showing 0 to 0 of 0 sources",
+                "infoFiltered": "(filtered from _MAX_ total sources)",
+                "lengthMenu": "Show _MENU_ sources",
+                "search": "Search sources:",
+                "paginate": {
+                    "first": "First",
+                    "last": "Last",
+                    "next": "Next",
+                    "previous": "Previous"
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        $('#sourcesTable').DataTable({
+            "order": [[2, "desc"]], // Ordenar por fecha descendente
+            "language": {
+                "emptyTable": "No sources available",
+                "info": "Showing _START_ to _END_ of _TOTAL_ sources",
+                "infoEmpty": "Showing 0 to 0 of 0 sources",
+                "infoFiltered": "(filtered from _MAX_ total sources)",
+                "lengthMenu": "Show _MENU_ sources",
+                "search": "Search sources:",
+                "paginate": {
+                    "first": "First",
+                    "last": "Last",
+                    "next": "Next",
+                    "previous": "Previous"
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

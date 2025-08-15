@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ theme.name }}</h2>
+    <div>
+
+        <!-- <a href="{% url 'add_event' %}?pk={{ theme.id }}" class="btn btn-primary me-2">
+            <i class="fas fa-plus"></i> Add Event
+        </a> -->
+        <a href="{% url 'add_event_with_theme' theme_pk=theme.pk %}" class="btn btn-success">
+    <i class="fas fa-plus"></i> Add Event to this Theme
+</a>
+        <a href="{% url 'edit_theme' theme.pk %}" class="btn btn-warning btn-sm">Edit</a>
+        <a href="{% url 'delete_theme' theme.id %}" class="btn btn-danger">
+            <i class="fas fa-trash"></i> Delete
+        </a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        Theme Details
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <p><strong>Category:</strong> {{ theme.category }}</p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Risk Rating:</strong> {{ theme.risk_rating }}</p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Onset Timeline:</strong> {{ theme.onset_timeline }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Events
+    </div>
+    <div class="card-body">
+        <table class="table table-striped" id="eventsTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Date Identified</th>
+                    <th>Status</th>
+                    <th>Controls</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                <tr>
+                    <td><a href="{% url 'view_event' event.id %}">{{ event.name }}</a></td>
+                    <td>{{ event.date_identified }}</td>
+                    <td>{{ event.status }}</td>
+                    <td>{% if event.control_in_place %}Yes{% else %}No{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        $('#eventsTable').DataTable();
+    });
+</script>
+{% endblock %}

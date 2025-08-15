@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{% if form.instance.pk %}Editar{% else %}Add{% endif %} Source</h2>
+    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            {{ form.name.label_tag }}
+            {{ form.name }}
+            <div class="invalid-feedback">
+                Por favor ingrese un nombre para la fuente.
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            {{ form.source_date.label_tag }}
+            {{ form.source_date }}
+        </div>
+        
+        <div class="mb-3">
+            {{ form.summary.label_tag }}
+            {{ form.summary }}
+        </div>
+        
+        <div class="mb-3">
+            {{ form.change_impact.label_tag }}
+            {{ form.change_impact }}
+        </div>
+        
+        <div class="mb-3">
+            {{ form.source_type.label_tag }}
+            {{ form.source_type }}
+        </div>
+        
+        <div class="mb-3" id="url-field">
+            {{ form.link_or_file.label_tag }}
+            {{ form.link_or_file }}
+            <small class="form-text text-muted">
+                Para enlaces web o Dropbox (ej: https://www.ejemplo.com)
+            </small>
+        </div>
+        
+        <div class="mb-3" id="file-field">
+            {{ form.file_upload.label_tag }}
+            {{ form.file_upload }}
+            <small class="form-text text-muted">
+                Formatos aceptados: PDF, Word, Excel (max. 5MB)
+            </small>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        {% comment %} <a href="{% if form.instance.pk %}{% url 'view_event' event_id=form.instance.event.pk %}{% else %}{% url 'event_list' %}{% endif %}" 
+           class="btn btn-secondary">Cancelar</a> {% endcomment %}
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sourceType = document.getElementById('id_source_type');
+    const urlField = document.getElementById('url-field');
+    const fileField = document.getElementById('file-field');
+    
+    function toggleFields() {
+        if (sourceType.value === 'URL' || sourceType.value === 'DROPBOX') {
+            urlField.style.display = 'block';
+            fileField.style.display = 'none';
+        } else if (sourceType.value === 'FILE') {
+            urlField.style.display = 'none';
+            fileField.style.display = 'block';
+        }
+    }
+    
+    // Ejecutar al cargar y cuando cambie el tipo
+    toggleFields();
+    sourceType.addEventListener('change', toggleFields);
+});
+</script>
+{% endblock %}
