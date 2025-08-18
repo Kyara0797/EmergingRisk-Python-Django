@@ -30,16 +30,19 @@ DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
 # Default hosts (adjust later to your domain)
 ALLOWED_HOSTS = os.getenv(
-    "ALLOWED_HOSTS",
-    ".onrender.com,localhost,127.0.0.1"
-).split(",")
+    h.strip() for h in os.getenv(
+        "ALLOWED_HOSTS",
+        ".up.railway.app,.onrender.com,localhost,127.0.0.1"
+    ).split(",") if h.strip() 
+)
 
 # CSRF for public domains (adjust to your exact domain if you have one)
 CSRF_TRUSTED_ORIGINS = os.getenv(
-    "CSRF_TRUSTED_ORIGINS",
-    "https://*.onrender.com"
-).split(",")
-
+    o.strip() for o in os.getenv(
+        "CSRF_TRUSTED_ORIGINS",
+        "https://*.onrender.com"
+).split(",") if o.strip()
+)
 # If running behind a proxy (Render/Heroku/etc.)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
