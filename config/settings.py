@@ -10,7 +10,20 @@ Docs:
 import os
 from pathlib import Path
 from django.conf import settings
-import dj_database_url  # for DATABASE_URL parsing
+import sys
+
+try:
+    import dj_database_url
+except ImportError:
+    print("Missing dependency: dj_database_url. Please install it with 'pip install dj-database-url'.", file=sys.stderr)
+    raise
+
+def csv_env(name: str, default: str) -> list[str]:
+    """
+    Lee una variable de entorno separada por comas y devuelve lista limpia.
+    Ejemplo: "ALLOWED_HOSTS=.up.railway.app,.onrender.com,localhost"
+    """
+    return [s.strip() for s in os.getenv(name, default).split(",") if s.strip()]
 
 # =========================
 # Paths
@@ -29,20 +42,16 @@ SECRET_KEY = os.getenv(
 DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
 # Default hosts (adjust later to your domain)
-ALLOWED_HOSTS = os.getenv(
-    h.strip() for h in os.getenv(
-        "ALLOWED_HOSTS",
-        ".up.railway.app,.onrender.com,localhost,127.0.0.1"
-    ).split(",") if h.strip() 
+ALLOWED_HOSTS = csv_env(
+    "ALLOWED_HOSTS",
+    ".up.railway.app,.onrender.com,localhost,127.0.0.1"
 )
 
-# CSRF for public domains (adjust to your exact domain if you have one)
-CSRF_TRUSTED_ORIGINS = os.getenv(
-    o.strip() for o in os.getenv(
-        "CSRF_TRUSTED_ORIGINS",
-        "https://*.onrender.com"
-).split(",") if o.strip()
+CSRF_TRUSTED_ORIGINS = csv_env(
+    "CSRF_TRUSTED_ORIGINS",
+    "https://*.up.railway.app,https://*.onrender.com"
 )
+
 # If running behind a proxy (Render/Heroku/etc.)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
