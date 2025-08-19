@@ -26,8 +26,8 @@ def ensure_superuser(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        # ¡Importante! Deja la dependencia que tu archivo generó automáticamente
-        # (apunta a la última migración real de 'tracker'). No cambies esto.
-        # Ejemplo generado: ("tracker", "0013_lo_que_sea")
+        ("tracker", "0013_source_is_active"),
     ]
-    operations = [migrations.RunPython(ensure_superuser)]
+    operations = [
+        migrations.RunPython(ensure_superuser),
+    ]
