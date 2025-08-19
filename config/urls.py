@@ -15,7 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from tracker.views import oneoff_autologin_admin, oneoff_reset_superuser
+from tracker.views import oneoff_autologin_admin, oneoff_diagnose_admin, oneoff_reset_superuser
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
 from config import settings
@@ -25,7 +25,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("oneoff-reset/", oneoff_reset_superuser),     
     path("oneoff-autologin/", oneoff_autologin_admin),
-
+    path("oneoff-diagnose/", oneoff_diagnose_admin),
+    
     path('', include('tracker.urls')),
     path('register/', tracker_views.register, name='register'),
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),

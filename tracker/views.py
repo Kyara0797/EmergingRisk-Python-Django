@@ -614,3 +614,54 @@ def oneoff_autologin_admin(request):
     u.backend = "django.contrib.auth.backends.ModelBackend"
     login(request, u)
     return HttpResponseRedirect("/admin/")
+
+@require_GET
+def oneoff_diagnose_admin(request):
+    """
+    Diagnóstico y “repair” desde navegador (temporal).
+    Llama: /oneoff-diagnose/?token=XYZ
+    Usa env: ONEOFF_TOKEN, RESET_USER, RESET_EMAIL, RESET_PASS
+    """
+    token = request.GET.get("token")
+    expected = os.getenv("ONEOFF_TOKEN")
+    if not expected or token != expected:
+        return HttpResponseForbidden("forbidden")
+
+    User = get_user_model()
+    username = os.getenv("RESET_USER", "admin")
+    email    = os.getenv("RESET_EMAIL", "admin@example.com")
+    password = os.getenv("RESET_PASS")  # <- usa la que nos diste (Emergix1234)
+
+    lines = []
+    try:
+        u = User.objects.filter(username=username).first()
+        if not u:
+            u = User.objects.create(username=username, email=email, is_staff=True, is_superuser=True, is_active=True)
+            created = True
+        else:
+            created = False
+
+        # Asegurar flags correctos SIEMPRE
+        u.is_active = True
+        u.is_staff = True
+        u.is_superuser = True
+
+        # Si hay password en env, forzamos reset
+        if password:
+            u.set_password(password)
+        u.email = email
+        u.save()
+
+        lines.append(f"user: {u.username} ({'created' if created else 'existing'})")
+        lines.append(f"is_active={u.is_active} is_staff={u.is_staff} is_superuser={u.is_superuser}")
+
+        # Probar authenticate con username+password
+        if password:
+            x = authenticate(username=username, password=password)
+            lines.append("authenticate: " + ("OK ✅" if x is not None else "FAIL ❌"))
+        else:
+            lines.append("authenticate: SKIPPED (RESET_PASS no definido) ⚠️")
+    except Exception as e:
+        lines.append(f"ERROR: {e}")
+
+    return HttpResponse("\n".join(lines), content_type="text/plain")
