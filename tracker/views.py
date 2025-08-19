@@ -24,7 +24,8 @@ from .models import (
     RISK_TAXONOMY_LV3,
     STATUS_CHOICES
 )
-from django.http.response import HttpResponse, HttpResponseForbidden
+from django.http.response import HttpResponse, HttpResponseForbidden,\
+    HttpResponseRedirect
 from django.views.decorators.http import require_GET
 import os
 
@@ -561,30 +562,55 @@ def edit_event(request, pk=None, theme_pk=None):
         })
     })
     
+def _check_token(request):
+    token = request.GET.get("token")
+    expected = os.getenv("ONEOFF_TOKEN")
+    return expected and token == expected
+
 @require_GET
 def oneoff_reset_superuser(request):
-    token = request.GET.get("token")
-    expected = os.getenv("ONEOFF_RESET_TOKEN", "FIXME_TOKEN")  # cambia abajo
-    if not expected or token != expected:
+    if not _check_token(request):
         return HttpResponseForbidden("forbidden")
 
     User = get_user_model()
     username = os.getenv("RESET_USER", "admin")
-    email    = os.getenv("RESET_EMAIL", "kyara.avalose@gmail.com")
+    email    = os.getenv("RESET_EMAIL", "admin@example.com")
     password = os.getenv("RESET_PASS", "root1234")
 
     if not password:
         return HttpResponse("missing RESET_PASS", status=400)
 
-    u, created = User.objects.get_or_create(username=username, defaults={"email": email})
+    u, created = User.objects.get_or_create(
+        username=username, defaults={"email": email}
+    )
     u.is_staff = True
     u.is_superuser = True
     u.email = email
     u.set_password(password)
     u.save()
-    msg = ("created" if created else "updated") + f" superuser {u.username}"
-    # diagnóstico: cuántos usuarios hay y sus usernames
+
     total = User.objects.count()
     users = list(User.objects.values_list("username", flat=True))
+    msg = ("created" if created else "updated") + f" superuser {u.username}"
     return HttpResponse(f"{msg}\nusers={total}\n{users}", content_type="text/plain")
-# --- /TEMP ---
+
+@require_GET
+def oneoff_autologin_admin(request):
+    """
+    Inicia sesión como el superuser y redirige al /admin sin pasar por el formulario.
+    Solo si el token es válido.
+    """
+    if not _check_token(request):
+        return HttpResponseForbidden("forbidden")
+
+    User = get_user_model()
+    username = os.getenv("RESET_USER", "admin")
+    try:
+        u = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return HttpResponse("superuser not found; call /oneoff-reset/ first", status=404)
+
+    # Fuerza backend por defecto y crea sesión
+    u.backend = "django.contrib.auth.backends.ModelBackend"
+    login(request, u)
+    return HttpResponseRedirect("/admin/")
