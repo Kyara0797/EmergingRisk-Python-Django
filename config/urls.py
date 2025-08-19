@@ -1,14 +1,27 @@
-# config/urls.py (VERSIÓN MINIMAL Y DEFINITIVA)
 from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import path
-from tracker.views import oneoff_diagnose_admin  
 
 urlpatterns = [
-    path("ping/", lambda r: HttpResponse("pong")),      
+    path("ping/", lambda r: HttpResponse("pong")),   # debe devolver "pong"
     path("admin/", admin.site.urls),
-       
 ]
+
+print("URLS LOADED:", [str(p.pattern) for p in urlpatterns])  # 🔊 evidencia en Deploy Logs
+
+
+
+# # config/urls.py (VERSIÓN MINIMAL Y DEFINITIVA)
+# from django.contrib import admin
+# from django.http import HttpResponse
+# from django.urls import path
+# from tracker.views import oneoff_diagnose_admin  
+
+# urlpatterns = [
+#     path("ping/", lambda r: HttpResponse("pong")),      
+#     path("admin/", admin.site.urls),
+       
+# ]
 
 
 # """
