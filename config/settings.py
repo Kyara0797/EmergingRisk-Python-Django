@@ -10,7 +10,20 @@ Docs:
 import os
 from pathlib import Path
 from django.conf import settings
-import dj_database_url  # for DATABASE_URL parsing
+import sys
+
+try:
+    import dj_database_url
+except ImportError:
+    print("Missing dependency: dj_database_url. Please install it with 'pip install dj-database-url'.", file=sys.stderr)
+    raise
+
+def csv_env(name: str, default: str) -> list[str]:
+    """
+    Lee una variable de entorno separada por comas y devuelve lista limpia.
+    Ejemplo: "ALLOWED_HOSTS=.up.railway.app,.onrender.com,localhost"
+    """
+    return [s.strip() for s in os.getenv(name, default).split(",") if s.strip()]
 
 # =========================
 # Paths
@@ -21,28 +34,35 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Core / Security
 # =========================
 # Use env vars in production
-SECRET_KEY = os.getenv(
-    "SECRET_KEY",
-    "django-insecure-i+hu6sltx=%((ff1c_sw29tzs!5jc2o8$yho&r4=ot^h!rwc9d"  # dev fallback
-)
+# SECRET_KEY = os.getenv(
+#     "SECRET_KEY",
+#     "django-insecure-i+hu6sltx=%((ff1c_sw29tzs!5jc2o8$yho&r4=ot^h!rwc9d"  # dev fallback
+# )
+
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-unsafe-key") 
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
 DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
 # Default hosts (adjust later to your domain)
-ALLOWED_HOSTS = os.getenv(
-    "ALLOWED_HOSTS",
-    ".onrender.com,localhost,127.0.0.1"
-).split(",")
+ALLOWED_HOSTS = [
+    ".onrender.com",
+    ".up.railway.app",
+    # "web-production-9a03.up.railway.app",
+    "localhost",
+    "127.0.0.1",
+]
 
-# CSRF for public domains (adjust to your exact domain if you have one)
-CSRF_TRUSTED_ORIGINS = os.getenv(
-    "CSRF_TRUSTED_ORIGINS",
-    "https://*.onrender.com"
-).split(",")
+CSRF_TRUSTED_ORIGINS = (
+    "https://*.onrender.com",
+    "https://*.up.railway.app",
+    "https://web-production-9a03.up.railway.app",
+
+)
 
 # If running behind a proxy (Render/Heroku/etc.)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
+USE_X_FORWARDED_HOST = True
 # Harden cookies automatically in production
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
@@ -107,12 +127,24 @@ TEMPLATES = [
 # Database
 # =========================
 # Uses Postgres if DATABASE_URL is set; falls back to local SQLite
-DATABASES = {
-    "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600
-    )
-}
+# 
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True, 
+        )
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # =========================
 # Password validation
