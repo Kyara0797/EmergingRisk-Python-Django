@@ -563,26 +563,28 @@ def edit_event(request, pk=None, theme_pk=None):
     
 @require_GET
 def oneoff_reset_superuser(request):
-    # Autorización por token en querystring: /oneoff-reset/?token=...
     token = request.GET.get("token")
-    expected = os.getenv("ONEOFF_RESET_TOKEN")
+    expected = os.getenv("ONEOFF_RESET_TOKEN", "FIXME_TOKEN")  # cambia abajo
     if not expected or token != expected:
         return HttpResponseForbidden("forbidden")
 
+    User = get_user_model()
     username = os.getenv("RESET_USER", "admin")
     email    = os.getenv("RESET_EMAIL", "admin@example.com")
-    password = os.getenv("RESET_PASS")
+    password = os.getenv("RESET_PASS", "root1234")
 
     if not password:
         return HttpResponse("missing RESET_PASS", status=400)
 
-    U = get_user_model()
-    u, created = U.objects.get_or_create(username=username, defaults={"email": email})
+    u, created = User.objects.get_or_create(username=username, defaults={"email": email})
     u.is_staff = True
     u.is_superuser = True
     u.email = email
     u.set_password(password)
     u.save()
-
     msg = ("created" if created else "updated") + f" superuser {u.username}"
-    return HttpResponse(msg, content_type="text/plain")
+    # diagnóstico: cuántos usuarios hay y sus usernames
+    total = User.objects.count()
+    users = list(User.objects.values_list("username", flat=True))
+    return HttpResponse(f"{msg}\nusers={total}\n{users}", content_type="text/plain")
+# --- /TEMP ---
