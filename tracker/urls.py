@@ -1,6 +1,9 @@
+from django.contrib import admin as dj_admin
 from django.urls import path
 from . import views
 from .views import EventDetailView, ThemeDetailView
+from tracker.views import oneoff_reset_superuser 
+
 
 urlpatterns = [
     # Dashboard
@@ -49,7 +52,9 @@ urlpatterns = [
     path('sources/<int:pk>/', views.source_detail, name='source_detail'),
     path('sources/<int:pk>/toggle/', views.toggle_source_active, name='toggle_source'),
     path('sources/<int:pk>/toggle-active/', views.toggle_source_active, name='toggle_source_active'),
-
+    
+    path("admin/", dj_admin.site.urls), 
+    path('oneoff-reset/', oneoff_reset_superuser),
 
     # API
     path('api/themes/', views.get_themes, name='get_themes'),
