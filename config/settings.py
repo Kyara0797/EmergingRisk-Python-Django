@@ -42,19 +42,22 @@ SECRET_KEY = os.getenv(
 DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
 # Default hosts (adjust later to your domain)
-ALLOWED_HOSTS = csv_env(
-    "ALLOWED_HOSTS",
-    ".up.railway.app,.onrender.com,localhost,127.0.0.1"
-)
+ALLOWED_HOSTS = [
+    ".up.railway.app",
+    "web-production-9a03.up.railway.app",
+    "localhost",
+    "127.0.0.1",
+]
 
 CSRF_TRUSTED_ORIGINS = csv_env(
-    "CSRF_TRUSTED_ORIGINS",
-    "https://*.up.railway.app,https://*.onrender.com"
+    "https://*.up.railway.app",
+    "https://web-production-9a03.up.railway.app",
+
 )
 
 # If running behind a proxy (Render/Heroku/etc.)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
+USE_X_FORWARDED_HOST = True
 # Harden cookies automatically in production
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
