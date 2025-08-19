@@ -574,8 +574,8 @@ def oneoff_reset_superuser(request):
 
     User = get_user_model()
     username = os.getenv("RESET_USER", "admin")
-    email    = os.getenv("RESET_EMAIL", "admin@example.com")
-    password = os.getenv("RESET_PASS", "root1234")
+    email    = os.getenv("RESET_EMAIL", "kyara.avalose@gmail.com")
+    password = os.getenv("RESET_PASS", "Emergix1234")
 
     if not password:
         return HttpResponse("missing RESET_PASS", status=400)
