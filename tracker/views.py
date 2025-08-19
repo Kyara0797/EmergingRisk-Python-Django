@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth import login, authenticate, logout, get_user_model
 from django.urls import reverse_lazy
 from django.http import JsonResponse
 from django.core.paginator import Paginator
@@ -24,6 +24,9 @@ from .models import (
     RISK_TAXONOMY_LV3,
     STATUS_CHOICES
 )
+from django.http.response import HttpResponse, HttpResponseForbidden
+from django.views.decorators.http import require_GET
+import os
 
 def _taxonomy_label_lists(event):
     # map de LV1: lista de tuplas -> dict
@@ -557,3 +560,29 @@ def edit_event(request, pk=None, theme_pk=None):
             'hierarchical': hierarchical_taxonomy
         })
     })
+    
+@require_GET
+def oneoff_reset_superuser(request):
+    # Autorización por token en querystring: /oneoff-reset/?token=...
+    token = request.GET.get("token")
+    expected = os.getenv("ONEOFF_RESET_TOKEN")
+    if not expected or token != expected:
+        return HttpResponseForbidden("forbidden")
+
+    username = os.getenv("RESET_USER", "admin")
+    email    = os.getenv("RESET_EMAIL", "admin@example.com")
+    password = os.getenv("RESET_PASS")
+
+    if not password:
+        return HttpResponse("missing RESET_PASS", status=400)
+
+    U = get_user_model()
+    u, created = U.objects.get_or_create(username=username, defaults={"email": email})
+    u.is_staff = True
+    u.is_superuser = True
+    u.email = email
+    u.set_password(password)
+    u.save()
+
+    msg = ("created" if created else "updated") + f" superuser {u.username}"
+    return HttpResponse(msg, content_type="text/plain")
