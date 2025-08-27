@@ -19,76 +19,187 @@
 
     <div class="card-body">
       <!-- Event details -->
-      <div class="row mb-4">
-        <div class="col-md-6">
-          <h5>Event Details</h5>
-          <p><strong>Theme:</strong>
-            <a href="{% url 'view_theme' pk=event.theme.id %}">{{ event.theme.name }}</a>
-          </p>
-          <p><strong>Date Identified:</strong> {{ event.date_identified|date:"Y-m-d" }}</p>
-          <p><strong>Risk Rating:</strong>
-            <span class="badge bg-{{ event.get_risk_color }}">{{ event.get_risk_rating_display }}</span>
-          </p>
-          <p><strong>Status:</strong> {{ event.get_status_display }}</p>
-          <p><strong>Controls in Place:</strong> {% if event.control_in_place %}Yes{% else %}No{% endif %}</p>
+      <div class="event-details-container mb-4 p-3 bg-light rounded">
+        <h5 class="mb-3 border-bottom pb-2">Event Details</h5>
+
+        <!-- Fila 1 -->
+        <div class="row">
+          <!-- Thread -->
+          <div class="col-md-3 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-palette text-primary me-2"></i>
+                <strong class="text-muted">Thread</strong>
+              </div>
+              <p class="mb-0 fw-bold">
+                <a href="{% url 'view_theme' pk=event.theme.id %}">{{ event.theme.name }}</a>
+              </p>
+            </div>
+          </div>
+
+          <!-- Date Identified -->
+          <div class="col-md-3 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-calendar-day text-info me-2"></i>
+                <strong class="text-muted">Date Identified</strong>
+              </div>
+              <p class="mb-0 fw-bold">{{ event.date_identified|date:"Y-m-d" }}</p>
+            </div>
+          </div>
+
+          <!-- Risk Rating -->
+          <div class="col-md-3 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                <strong class="text-muted">Risk Rating</strong>
+              </div>
+              <span class="badge bg-{{ event.get_risk_color }} p-2">
+                {{ event.get_risk_rating_display }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Status -->
+          <div class="col-md-3 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-tasks text-success me-2"></i>
+                <strong class="text-muted">Status</strong>
+              </div>
+              <p class="mb-0 fw-bold">{{ event.get_status_display }}</p>
+            </div>
+          </div>
         </div>
 
-        <div class="col-md-6">
-          <h5>Classification</h5>
+        <!-- Fila 2 -->
+        <div class="row mt-2">
+          <!-- Controls in Place -->
+          <div class="col-md-3 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-shield-alt text-warning me-2"></i>
+                <strong class="text-muted">Controls in Place</strong>
+              </div>
+              <p class="mb-0 fw-bold">
+                {% if event.control_in_place %}
+                  <span class="text-success">Yes</span>
+                {% else %}
+                  <span class="text-danger">No</span>
+                {% endif %}
+              </p>
+            </div>
+          </div>
 
-          <p><strong>Impacted Line of Business:</strong>
-            {% if event.impacted_lines %}
-              {% for lob in event.impacted_lines %}
-                {{ lob }}{% if not forloop.last %}, {% endif %}
-              {% endfor %}
-            {% else %}
-              <em>None</em>
-            {% endif %}
-          </p>
+          <!-- Impacted LOB (columna central) -->
+          <div class="col-md-6 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-building text-purple me-2"></i>
+                <strong class="text-muted">Impacted LOB</strong>
+              </div>
+              <p class="mb-0">
+                {% if impact_lobs_display %}
+                  {% for lob in impact_lobs_display %}
+                    <span class="badge bg-secondary mb-1">{{ lob }}</span>
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </p>
+            </div>
+          </div>
 
-          <p><strong>Risk Taxonomy Lv1:</strong>
-            {% if risk_lv1_labels %}
-              {% for label in risk_lv1_labels %}
-                {{ label }}{% if not forloop.last %}, {% endif %}
-              {% endfor %}
-            {% else %}
-              <em>None</em>
-            {% endif %}
-          </p>
+          <!-- Source Count -->
+          <div class="col-md-3 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-file-alt text-info me-2"></i>
+                <strong class="text-muted">Sources</strong>
+              </div>
+              <p class="mb-0 fw-bold">{{ sources.count }} {{ sources.count|pluralize:"source,sources" }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          <p><strong>Risk Taxonomy Lv2:</strong>
-            {% if risk_lv2_labels %}
-              {% for label in risk_lv2_labels %}
-                {{ label }}{% if not forloop.last %}, {% endif %}
-              {% endfor %}
-            {% else %}
-              <em>None</em>
-            {% endif %}
-          </p>
+      <!-- Risk Taxonomy -->
+      <div class="risk-taxonomy-container mb-4 p-3 bg-light rounded">
+        <h5 class="mb-3 border-bottom pb-2">Risk Taxonomy</h5>
+        <div class="row">
+          <!-- Lv1 -->
+          <div class="col-md-4 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-layer-group text-primary me-2"></i>
+                <strong class="text-muted">Level 1</strong>
+              </div>
+              <div class="taxonomy-items scroll-container" style="max-height:150px;overflow-y:auto;">
+                {% if risk_lv1_labels %}
+                  {% for label in risk_lv1_labels %}
+                    <span class="badge bg-primary mb-1">{{ label }}</span>
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
 
-          <p><strong>Risk Taxonomy Lv3:</strong>
-            {% if risk_lv3_labels %}
-              {% for label in risk_lv3_labels %}
-                {{ label }}{% if not forloop.last %}, {% endif %}
-              {% endfor %}
-            {% else %}
-              <em>None</em>
-            {% endif %}
-          </p>
+          <!-- Lv2 -->
+          <div class="col-md-4 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-layer-group text-info me-2"></i>
+                <strong class="text-muted">Level 2</strong>
+              </div>
+              <div class="taxonomy-items scroll-container" style="max-height:150px;overflow-y:auto;">
+                {% if risk_lv2_labels %}
+                  {% for label in risk_lv2_labels %}
+                    <span class="badge bg-info mb-1">{{ label }}</span>
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Lv3 -->
+          <div class="col-md-4 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-layer-group text-success me-2"></i>
+                <strong class="text-muted">Level 3</strong>
+              </div>
+              <div class="taxonomy-items scroll-container" style="max-height:150px;overflow-y:auto;">
+                {% if risk_lv3_labels %}
+                  {% for label in risk_lv3_labels %}
+                    <span class="badge bg-success mb-1">{{ label }}</span>
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">None</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- Description -->
       <div class="row mb-4">
         <div class="col-12">
-          <h5>Description</h5>
-          <div class="border p-3 bg-light rounded">
-            {{ event.description|linebreaks }}
+          <div class="description-container p-3 bg-light rounded">
+            <h5 class="mb-3 border-bottom pb-2">Description</h5>
+            <div class="p-3 bg-white rounded shadow-sm">
+              {{ event.description|linebreaks }}
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Sources with filter -->
+      <!-- Sources + filter -->
       <div class="mt-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5>Sources ({{ sources.count }})</h5>
@@ -133,24 +244,15 @@
               </thead>
               <tbody>
               {% for source in sources %}
-                <tr
-                  data-href="{% url 'source_detail' pk=source.id %}"
-                  {% if not source.is_active %}class="table-light text-muted"{% endif %}
-                >
+                <tr data-href="{% url 'source_detail' pk=source.id %}" {% if not source.is_active %}class="table-light text-muted"{% endif %}>
                   <td>
-                    <a href="{% url 'source_detail' pk=source.id %}">
-                      {{ source.name }}
-                    </a>
+                    <a href="{% url 'source_detail' pk=source.id %}">{{ source.name }}</a>
                     {% if source.potential_impact_notes %}
-                      <span class="ms-1" title="{{ source.potential_impact_notes|escape }}">
-                        <i class="fas fa-info-circle"></i>
-                      </span>
+                      <span class="ms-1" title="{{ source.potential_impact_notes|escape }}"><i class="fas fa-info-circle"></i></span>
                     {% endif %}
                   </td>
-
                   <td><span class="badge bg-info">{{ source.get_source_type_display }}</span></td>
                   <td>{{ source.source_date|date:"Y-m-d" }}</td>
-
                   <td>
                     {% if source.potential_impact == 'ESCALATING' %}
                       <span title="Escalating"><i class="fas fa-arrow-up text-danger"></i> Escalating</span>
@@ -162,7 +264,6 @@
                       <em>-</em>
                     {% endif %}
                   </td>
-
                   <td>
                     {% if source.link_or_file %}
                       <a href="{{ source.link_or_file }}" target="_blank" class="btn btn-sm btn-outline-primary">
@@ -176,7 +277,6 @@
                       <span class="text-muted">—</span>
                     {% endif %}
                   </td>
-
                   <td>
                     {% if source.is_active %}
                       <span class="badge bg-success">Active</span>
@@ -184,15 +284,9 @@
                       <span class="badge bg-secondary">Archived</span>
                     {% endif %}
                   </td>
-
                   <td class="text-nowrap">
-                    <a href="{% url 'source_detail' pk=source.id %}" class="btn btn-sm btn-outline-primary" title="View">
-                      <i class="fas fa-eye"></i>
-                    </a>
-                    <a href="{% url 'edit_source' pk=source.id %}" class="btn btn-sm btn-outline-warning" title="Edit">
-                      <i class="fas fa-edit"></i>
-                    </a>
-
+                    <a href="{% url 'source_detail' pk=source.id %}" class="btn btn-sm btn-outline-primary" title="View"><i class="fas fa-eye"></i></a>
+                    <a href="{% url 'edit_source' pk=source.id %}" class="btn btn-sm btn-outline-warning" title="Edit"><i class="fas fa-edit"></i></a>
                     {% if source.is_active %}
                       <a href="{% url 'toggle_source_active' pk=source.id %}" class="btn btn-sm btn-outline-danger" title="Archive"
                          onclick="return confirm('Archive this source? You can show it again using \"Show archived\".');">
@@ -219,6 +313,20 @@
     </div>
   </div>
 </div>
+
+<style>
+  .detail-card{transition:transform .2s ease,box-shadow .2s ease;border:1px solid rgba(0,0,0,.05)}
+  .detail-card:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(0,0,0,.1)!important}
+  .event-details-container,.risk-taxonomy-container,.description-container{background:linear-gradient(to right,#f8f9fa,#f0f4f8)!important}
+  .taxonomy-items{min-height:40px}
+  .text-purple{color:#6f42c1}
+  .scroll-container{scroll-behavior:smooth}
+  .scroll-container::-webkit-scrollbar{width:8px}
+  .scroll-container::-webkit-scrollbar-track{background:#f1f1f1;border-radius:4px}
+  .scroll-container::-webkit-scrollbar-thumb{background:#a8a8a8;border-radius:4px}
+  .scroll-container::-webkit-scrollbar-thumb:hover{background:#888}
+  .taxonomy-items .badge{font-size:.75rem;padding:.35em .65em;margin:.15rem;display:inline-block;white-space:normal;word-break:break-word;max-width:100%}
+</style>
 {% endblock %}
 
 {% block scripts %}
@@ -228,7 +336,7 @@
     document.querySelectorAll('#sourcesTable tbody tr[data-href]').forEach(function (row) {
       row.style.cursor = 'pointer';
       row.addEventListener('click', function (e) {
-        if (e.target.closest('a,button,.btn')) return; // no interceptar clicks en botones
+        if (e.target.closest('a,button,.btn')) return;
         window.location = row.getAttribute('data-href');
       });
     });
@@ -238,7 +346,7 @@
   if (window.jQuery && $.fn.DataTable) {
     $(function () {
       $('#sourcesTable').DataTable({
-        order: [[2, 'desc']],
+        order: [[2,'desc']],
         language: {
           emptyTable: 'No sources available',
           info: 'Showing _START_ to _END_ of _TOTAL_ sources',
@@ -246,9 +354,7 @@
           infoFiltered: '(filtered from _MAX_ total sources)',
           lengthMenu: 'Show _MENU_ sources',
           search: 'Search sources:',
-          paginate: {
-            first: 'First', last: 'Last', next: 'Next', previous: 'Previous'
-          }
+          paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Previous' }
         }
       });
     });

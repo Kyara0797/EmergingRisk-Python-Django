@@ -43,62 +43,119 @@
 
     <!-- Body -->
     <div class="card-body">
-      <div class="row mb-3">
-        <div class="col-md-6">
-          <p><strong>Event:</strong>
-            <a href="{% url 'view_event' event_id=source.event.id %}">{{ source.event.name }}</a>
-          </p>
-          <p><strong>Type:</strong> <span class="badge bg-info">{{ source.get_source_type_display }}</span></p>
-          <p><strong>Date:</strong> {{ source.source_date|date:"Y-m-d" }}</p>
-
-          <p class="mb-1"><strong>Potential Impact:</strong>
-            {% if source.potential_impact == 'ESCALATING' %}
-              <i class="fas fa-arrow-up text-danger"></i> Escalating
-            {% elif source.potential_impact == 'MAINTAINING' %}
-              <i class="fas fa-arrow-right text-warning"></i> Maintaining
-            {% elif source.potential_impact == 'DECREASING' %}
-              <i class="fas fa-arrow-down text-success"></i> Decreasing
-            {% else %}
-              <em>-</em>
-            {% endif %}
-          </p>
-          {% if source.potential_impact_notes %}
-            <div class="text-muted small">Notes: {{ source.potential_impact_notes }}</div>
-          {% endif %}
-        </div>
-
-        <div class="col-md-6">
-          <p><strong>Content:</strong></p>
-          {% if source.link_or_file %}
-            <a href="{{ source.link_or_file }}" target="_blank" class="btn btn-sm btn-outline-primary">
-              <i class="fas fa-external-link-alt me-1"></i> Visit URL
-            </a>
-          {% elif source.file_upload %}
-            <a href="{{ source.file_upload.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-              <i class="fas fa-download me-1"></i> Download File
-            </a>
-          {% else %}
-            <span class="text-muted">—</span>
-          {% endif %}
+      <!-- Source details - Rediseñado en tarjetas -->
+      <div class="source-details-container mb-4 p-3 bg-light rounded">
+        <h5 class="mb-3 border-bottom pb-2">Source Details</h5>
+        <div class="row">
+          <!-- Event -->
+          <div class="col-md-3 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-calendar-alt text-primary me-2"></i>
+                <strong class="text-muted">Event</strong>
+              </div>
+              <p class="mb-0 fw-bold">
+                <a href="{% url 'view_event' event_id=source.event.id %}">{{ source.event.name }}</a>
+              </p>
+            </div>
+          </div>
+          
+          <!-- Type -->
+          <div class="col-md-3 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-tag text-info me-2"></i>
+                <strong class="text-muted">Type</strong>
+              </div>
+              <p class="mb-0">
+                <span class="badge bg-info">{{ source.get_source_type_display }}</span>
+              </p>
+            </div>
+          </div>
+          
+          <!-- Date -->
+          <div class="col-md-3 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-calendar-day text-success me-2"></i>
+                <strong class="text-muted">Date</strong>
+              </div>
+              <p class="mb-0 fw-bold">{{ source.source_date|date:"Y-m-d" }}</p>
+            </div>
+          </div>
+          
+          <!-- Potential Impact -->
+          <div class="col-md-3 mb-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-chart-line text-warning me-2"></i>
+                <strong class="text-muted">Potential Impact</strong>
+              </div>
+              <p class="mb-0 fw-bold">
+                {% if source.potential_impact == 'ESCALATING' %}
+                  <i class="fas fa-arrow-up text-danger"></i> Escalating
+                {% elif source.potential_impact == 'MAINTAINING' %}
+                  <i class="fas fa-arrow-right text-warning"></i> Maintaining
+                {% elif source.potential_impact == 'DECREASING' %}
+                  <i class="fas fa-arrow-down text-success"></i> Decreasing
+                {% else %}
+                  <em class="text-muted">-</em>
+                {% endif %}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="mb-3">
-        <h6>Summary</h6>
-        <div class="border rounded p-3 bg-light">{{ source.summary|linebreaks }}</div>
+      <!-- Content Section -->
+      <div class="content-container mb-4 p-3 bg-light rounded">
+        <h5 class="mb-3 border-bottom pb-2">Content</h5>
+        <div class="row">
+          <div class="col-12">
+            <div class="detail-card p-3 bg-white rounded shadow-sm">
+              {% if source.link_or_file %}
+                <a href="{{ source.link_or_file }}" target="_blank" class="btn btn-outline-primary">
+                  <i class="fas fa-external-link-alt me-1"></i> Visit URL
+                </a>
+                <div class="mt-2 small text-muted">{{ source.link_or_file }}</div>
+              {% elif source.file_upload %}
+                <a href="{{ source.file_upload.url }}" target="_blank" class="btn btn-outline-secondary">
+                  <i class="fas fa-download me-1"></i> Download File
+                </a>
+                <div class="mt-2 small text-muted">{{ source.file_upload.name }}</div>
+              {% else %}
+                <span class="text-muted">No content available</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
       </div>
 
+      <!-- Summary Section -->
+      <div class="summary-container mb-4 p-3 bg-light rounded">
+        <h5 class="mb-3 border-bottom pb-2">Summary</h5>
+        <div class="p-3 bg-white rounded shadow-sm">
+          {{ source.summary|linebreaks }}
+        </div>
+      </div>
+
+      <!-- Potential Impact Notes Section -->
       {% if source.potential_impact_notes %}
-        <div class="mb-3">
-          <h6>Potential Impact Notes</h6>
-          <div class="border rounded p-3 bg-light">{{ source.potential_impact_notes|linebreaks }}</div>
+        <div class="notes-container mb-4 p-3 bg-light rounded">
+          <h5 class="mb-3 border-bottom pb-2">Potential Impact Notes</h5>
+          <div class="p-3 bg-white rounded shadow-sm">
+            {{ source.potential_impact_notes|linebreaks }}
+          </div>
         </div>
       {% endif %}
 
+      <!-- PDF Preview Section -->
       {% if is_pdf and source.file_upload %}
-        <div class="mt-4">
-          <h6>Preview (PDF)</h6>
-          <iframe src="{{ source.file_upload.url }}" width="100%" height="600" style="border:1px solid #ddd;"></iframe>
+        <div class="preview-container mt-4 p-3 bg-light rounded">
+          <h5 class="mb-3 border-bottom pb-2">Preview (PDF)</h5>
+          <div class="p-3 bg-white rounded shadow-sm">
+            <iframe src="{{ source.file_upload.url }}" width="100%" height="600" style="border:1px solid #ddd; border-radius: 4px;"></iframe>
+          </div>
         </div>
       {% endif %}
     </div>
@@ -115,4 +172,24 @@
     </div>
   </div>
 </div>
+
+<style>
+  .detail-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+  
+  .detail-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+  }
+  
+  .source-details-container,
+  .content-container,
+  .summary-container,
+  .notes-container,
+  .preview-container {
+    background: linear-gradient(to right, #f8f9fa, #f0f4f8) !important;
+  }
+</style>
 {% endblock %}

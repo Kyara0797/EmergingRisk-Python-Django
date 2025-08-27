@@ -1,80 +1,155 @@
 {% extends "base.html" %}
-
 {% block content %}
 <div class="container mt-4">
-    <h2>{% if form.instance.pk %}Editar{% else %}Add{% endif %} Source</h2>
-    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
-        {% csrf_token %}
-        
-        <div class="mb-3">
-            {{ form.name.label_tag }}
-            {{ form.name }}
-            <div class="invalid-feedback">
-                Por favor ingrese un nombre para la fuente.
-            </div>
-        </div>
-        
-        <div class="mb-3">
-            {{ form.source_date.label_tag }}
-            {{ form.source_date }}
-        </div>
-        
-        <div class="mb-3">
-            {{ form.summary.label_tag }}
-            {{ form.summary }}
-        </div>
-        
-        <div class="mb-3">
-            {{ form.change_impact.label_tag }}
-            {{ form.change_impact }}
-        </div>
-        
-        <div class="mb-3">
-            {{ form.source_type.label_tag }}
-            {{ form.source_type }}
-        </div>
-        
-        <div class="mb-3" id="url-field">
-            {{ form.link_or_file.label_tag }}
-            {{ form.link_or_file }}
-            <small class="form-text text-muted">
-                Para enlaces web o Dropbox (ej: https://www.ejemplo.com)
-            </small>
-        </div>
-        
-        <div class="mb-3" id="file-field">
-            {{ form.file_upload.label_tag }}
-            {{ form.file_upload }}
-            <small class="form-text text-muted">
-                Formatos aceptados: PDF, Word, Excel (max. 5MB)
-            </small>
-        </div>
-        
-        <button type="submit" class="btn btn-primary">Guardar</button>
-        {% comment %} <a href="{% if form.instance.pk %}{% url 'view_event' event_id=form.instance.event.pk %}{% else %}{% url 'event_list' %}{% endif %}" 
-           class="btn btn-secondary">Cancelar</a> {% endcomment %}
-    </form>
-</div>
+  <h2>{% if form.instance.pk %}Edit{% else %}Add{% endif %} Source</h2>
 
+  <form method="post" enctype="multipart/form-data" id="source-form" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label class="form-label">Name <span class="text-muted float-end"><span id="cnt">0</span>/30</span></label>
+      <input type="text" name="name" class="form-control" maxlength="30"
+             value="{{ form.name.value|default_if_none:'' }}" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Source Date</label>
+      {{ form.source_date }}
+      <div class="form-text text-muted">Must be today or in the past</div>
+    </div>
+
+    <div class="mb-3">
+      <div class="btn-group" role="group">
+        <input type="checkbox" class="btn-check" id="t-link">
+        <label class="btn btn-outline-primary" for="t-link"><i class="fas fa-link me-1"></i> Link</label>
+        <input type="checkbox" class="btn-check" id="t-file">
+        <label class="btn btn-outline-primary" for="t-file"><i class="fas fa-file-upload me-1"></i> File</label>
+      </div>
+    </div>
+
+    <div class="mb-3" id="urlField" style="display:none;">
+      <label class="form-label">URL</label>
+      {{ form.link_or_file }}
+      <div id="url-err" class="invalid-feedback" style="display:none;">
+        Enter a valid URL (http/https) or mailto:
+      </div>
+    </div>
+
+    <div class="mb-3" id="fileField" style="display:none;">
+      <label class="form-label">Files</label>
+      <input id="id_file_upload" name="file_upload" type="file" class="form-control"
+             multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.eml,.msg">
+      <ul class="list-group mt-2" id="file-list" style="display:none;"></ul>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Summary</label>
+      {{ form.summary }}
+      <div id="sum-dup" class="invalid-feedback" style="display:none;">
+        Summary must be different from existing ones for this event.
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label d-block">Potential Impact Trend</label>
+      {{ form.potential_impact }}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Potential Impact Notes</label>
+      {{ form.potential_impact_notes }}
+    </div>
+
+    {{ form.event }} {{ form.source_type }}  {# source_type va oculto #}
+
+    <button type="submit" class="btn btn-primary" id="btn-save">Save</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const sourceType = document.getElementById('id_source_type');
-    const urlField = document.getElementById('url-field');
-    const fileField = document.getElementById('file-field');
-    
-    function toggleFields() {
-        if (sourceType.value === 'URL' || sourceType.value === 'DROPBOX') {
-            urlField.style.display = 'block';
-            fileField.style.display = 'none';
-        } else if (sourceType.value === 'FILE') {
-            urlField.style.display = 'none';
-            fileField.style.display = 'block';
-        }
-    }
-    
-    // Ejecutar al cargar y cuando cambie el tipo
-    toggleFields();
-    sourceType.addEventListener('change', toggleFields);
+document.addEventListener('DOMContentLoaded', () => {
+  const name = document.querySelector('input[name="name"]');
+  const cnt = document.getElementById('cnt');
+  function upd(){ cnt.textContent = (name.value||'').length; }
+  name.addEventListener('input', upd); upd();
+
+  // date max = hoy
+  const d = document.getElementById('id_source_date');
+  if (d) {
+    const t=new Date(); const p=n=>String(n).padStart(2,'0');
+    d.max = `${t.getFullYear()}-${p(t.getMonth()+1)}-${p(t.getDate())}`;
+  }
+
+  // toggles
+  const tLink = document.getElementById('t-link');
+  const tFile = document.getElementById('t-file');
+  const urlField = document.getElementById('urlField');
+  const fileField = document.getElementById('fileField');
+  const urlInput = document.getElementById('id_link_or_file');
+  function sync(){ urlField.style.display = tLink.checked?'':'none';
+                  fileField.style.display = tFile.checked?'':'none'; }
+  if (urlInput?.value) tLink.checked = true; sync();
+  tLink.addEventListener('change', sync); tFile.addEventListener('change', sync);
+
+  // url valida solo al guardar
+  const urlErr = document.getElementById('url-err');
+  function isValidUrl(v){
+    if(!v) return false; v=v.trim();
+    if (v.startsWith('mailto:')) return v.length>7 && v.includes('@');
+    try { const u=new URL(v); return ['http:','https:'].includes(u.protocol); } catch { return false; }
+  }
+
+  // múltiples archivos con lista/remoción
+  const fi = document.getElementById('id_file_upload');
+  const ul = document.getElementById('file-list');
+  let store=[];
+  const key=f=>`${f.name}_${f.lastModified}_${f.size}`;
+  function syncInput(){
+    const dt = new DataTransfer();
+    store.forEach(x=>dt.items.add(x.file));
+    fi.files = dt.files;
+  }
+  function render(){
+    ul.innerHTML=''; if(!store.length){ul.style.display='none';return;}
+    ul.style.display=''; store.forEach(({file,k})=>{
+      const li=document.createElement('li');
+      li.className='list-group-item d-flex justify-content-between align-items-center';
+      li.innerHTML = `<span><i class="fas fa-file me-2"></i>${file.name}</span>`;
+      const b=document.createElement('button'); b.type='button'; b.className='btn btn-sm btn-outline-danger';
+      b.innerHTML='<i class="fas fa-times"></i>'; b.onclick=()=>{store=store.filter(x=>x.k!==k); syncInput(); render();};
+      li.appendChild(b); ul.appendChild(li);
+    });
+  }
+  fi?.addEventListener('change', e=>{
+    Array.from(e.target.files||[]).forEach(f=>{ const k=key(f); if(!store.find(x=>x.k===k)) store.push({file:f,k}); });
+    syncInput(); render(); if(store.length){ tFile.checked=true; sync(); } e.target.value='';
+  });
+
+  // summary único (sólo al guardar)
+  let existing=[]; try { existing = JSON.parse('{{ existing_summaries_json|default:"[]"|escapejs }}'); } catch {}
+  function norm(s){ return String(s||'').trim().toLowerCase().replace(/\s+/g,' '); }
+  const sumEl = document.getElementById('id_summary');
+  const sumErr = document.getElementById('sum-dup');
+
+  document.getElementById('btn-save').addEventListener('click', (e)=>{
+    let ok = true;
+    if (tLink.checked){
+      if (!isValidUrl(urlInput?.value)){ ok=false; urlErr.style.display='block'; urlInput?.classList.add('is-invalid'); }
+      else { urlErr.style.display='none'; urlInput?.classList.remove('is-invalid'); }
+    } else { urlErr.style.display='none'; urlInput?.classList.remove('is-invalid'); }
+
+    const s = norm(sumEl?.value);
+    if (s && existing.map(norm).includes(s)){ ok=false; sumErr.style.display='block'; sumEl?.classList.add('is-invalid'); }
+    else { sumErr.style.display='none'; sumEl?.classList.remove('is-invalid'); }
+
+    if (!ok){ e.preventDefault(); (document.querySelector('.is-invalid')||urlErr||sumErr)?.scrollIntoView({behavior:'smooth', block:'center'}); }
+  });
 });
 </script>
 {% endblock %}

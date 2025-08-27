@@ -1,94 +1,261 @@
 {% extends "base.html" %}
+{% load widget_tweaks %}
 
 {% block content %}
 <div class="container mt-4">
-    <div class="card">
-        <div class="card-header bg-primary text-white">
-            <h4><i class="fas fa-tag me-2"></i>Add New Theme</h4>
-        </div>
-        <div class="card-body">
-            <form method="post" class="needs-validation" novalidate>
-                {% csrf_token %}
-                
-                {% if form.non_field_errors %}
-                <div class="alert alert-danger">
-                    {{ form.non_field_errors }}
-                </div>
-                {% endif %}
-                
-                <div class="row g-3">
-                    <!-- Columna izquierda -->
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ form.category.id_for_label }}" class="form-label">
-                                {{ form.category.label }}
-                            </label>
-                            {{ form.category }}
-                            {% if form.category.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.category.errors|join:", " }}
-                            </div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.name.id_for_label }}" class="form-label">
-                                {{ form.name.label }}
-                            </label>
-                            {{ form.name }}
-                        </div>
-                    </div>
-                    
-                    <!-- Columna derecha -->
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="{{ form.risk_rating.id_for_label }}" class="form-label">
-                                {{ form.risk_rating.label }}
-                            </label>
-                            {{ form.risk_rating }}
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.onset_timeline.id_for_label }}" class="form-label">
-                                {{ form.onset_timeline.label }}
-                            </label>
-                            {{ form.onset_timeline }}
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="d-flex justify-content-between mt-4">
-                    <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-1"></i> Cancel
-                    </a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-1"></i> Save Theme
-                    </button>
-                </div>
-            </form>
-        </div>
+  <div class="card">
+    <div class="card-header bg-primary text-white">
+      <h4 class="m-0"><i class="fas fa-tag me-2"></i>Add New Thread</h4>
     </div>
+
+    <div class="card-body">
+      <form method="post" id="theme-form" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">
+            {% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="row mb-4">
+          <!-- Basic Information -->
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-header bg-light">
+                <h5 class="m-0"><i class="fas fa-info-circle me-2"></i>Basic Information</h5>
+              </div>
+              <div class="card-body">
+                <!-- Category -->
+                <div class="mb-3">
+                  <label for="{{ form.category.id_for_label }}" class="form-label">
+                    Category <span class="text-danger">*</span>
+                  </label>
+                  {{ form.category|add_class:"form-select" }}
+                  {% if form.category.errors %}
+                    <div class="invalid-feedback d-block">{{ form.category.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+
+                <!-- Name (máx 30) -->
+                <div class="mb-3">
+                  <label class="form-label">
+                    Name
+                    <span class="text-muted float-end"><span id="name-char-count">0</span>/30</span>
+                  </label>
+                  {{ form.name|attr:"maxlength:30"|attr:"placeholder:Enter theme name"|add_class:"form-control title-input" }}
+                  {% if form.name.errors %}
+                    <div class="invalid-feedback d-block">{{ form.name.errors|join:", " }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted">Maximum 30 characters allowed</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Classification -->
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-header bg-light">
+                <h5 class="m-0"><i class="fas fa-tags me-2"></i>Classification</h5>
+              </div>
+              <div class="card-body">
+                <!-- Risk Rating (cards) -->
+                <div class="mb-3">
+                  <label class="form-label">Risk Rating <span class="text-danger">*</span></label>
+
+                  {# Select real que viaja al backend; se mantiene oculto #}
+                  <select name="risk_rating" class="form-select risk-rating d-none">
+                    {% for value, label in form.risk_rating.field.choices %}
+                      <option value="{{ value }}"
+                        {% if form.risk_rating.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>
+                        {{ label }}
+                      </option>
+                    {% endfor %}
+                  </select>
+
+                  <div class="risk-rating-container mt-2" id="risk-cards">
+                    <div class="row g-2">
+                      <div class="col-3">
+                        <div class="risk-card compact" data-value="LOW" title="Low Risk">
+                          <div class="card h-100">
+                            <div class="card-body text-center p-1">
+                              <div class="risk-icon risk-low"><i class="fas fa-check-circle"></i></div>
+                              <div class="risk-label">Low</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-3">
+                        <div class="risk-card compact" data-value="MEDIUM" title="Medium Risk">
+                          <div class="card h-100">
+                            <div class="card-body text-center p-1">
+                              <div class="risk-icon risk-medium"><i class="fas fa-exclamation-circle"></i></div>
+                              <div class="risk-label">Medium</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-3">
+                        <div class="risk-card compact" data-value="HIGH" title="High Risk">
+                          <div class="card h-100">
+                            <div class="card-body text-center p-1">
+                              <div class="risk-icon risk-high"><i class="fas fa-exclamation-triangle"></i></div>
+                              <div class="risk-label">High</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-3">
+                        <div class="risk-card compact" data-value="CRITICAL" title="Critical Risk">
+                          <div class="card h-100">
+                            <div class="card-body text-center p-1">
+                              <div class="risk-icon risk-critical"><i class="fas fa-skull-crossbones"></i></div>
+                              <div class="risk-label">Critical</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div id="risk-error" class="invalid-feedback d-block" style="display:none;">
+                      Please select a Risk Rating
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Onset timeline -->
+                <div class="mb-3">
+                  <label for="{{ form.onset_timeline.id_for_label }}" class="form-label">
+                    Onset timeline <span class="text-danger">*</span>
+                  </label>
+                  {{ form.onset_timeline|add_class:"form-select" }}
+                  {% if form.onset_timeline.errors %}
+                    <div class="invalid-feedback d-block">{{ form.onset_timeline.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="d-flex justify-content-between mt-2">
+          <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Cancel
+          </a>
+          <button type="submit" class="btn btn-primary" id="submit-btn">
+            <i class="fas fa-save me-1"></i> Save Thread
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if form.errors %}
+    <div class="alert alert-danger mt-3">
+      <strong>Error!</strong> Please fix the following issues:
+      <ul>
+      {% for field, errors in form.errors.items %}
+        {% for error in errors %}
+          <li>{{ field|title }}: {{ error }}</li>
+        {% endfor %}
+      {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-$(document).ready(function() {
-    
-    (function () {
-        'use strict'
-        var forms = document.querySelectorAll('.needs-validation')
-        Array.prototype.slice.call(forms)
-            .forEach(function (form) {
-                form.addEventListener('submit', function (event) {
-                    if (!form.checkValidity()) {
-                        event.preventDefault()
-                        event.stopPropagation()
-                    }
-                    form.classList.add('was-validated')
-                }, false)
-            })
-    })()
+document.addEventListener('DOMContentLoaded', function () {
+  /* ===== Name counter ===== */
+  const nameInput = document.querySelector('[name="name"]');
+  const nameCounter = document.getElementById('name-char-count');
+  function updateCharCount() {
+    if (!nameInput || !nameCounter) return;
+    const n = nameInput.value.length;
+    const max = parseInt(nameInput.getAttribute('maxlength') || '30', 10);
+    nameCounter.textContent = n;
+    nameCounter.classList.remove('text-muted','text-warning','text-danger');
+    if (n >= max) nameCounter.classList.add('text-danger');
+    else if (n > max * 0.8) nameCounter.classList.add('text-warning');
+    else nameCounter.classList.add('text-muted');
+  }
+  if (nameInput) { updateCharCount(); nameInput.addEventListener('input', updateCharCount); }
+
+  /* ===== Risk Rating cards <-> select (robusto) ===== */
+  const riskSelect = document.querySelector('select.risk-rating');
+  const riskCards  = document.querySelectorAll('.risk-card');
+  const riskError  = document.getElementById('risk-error');
+  const cardsBox   = document.getElementById('risk-cards');
+
+  const validValues = riskSelect ? Array.from(riskSelect.options).map(o => o.value) : [];
+  function normalizeToChoice(cardValue) {
+    const v = String(cardValue || '').toLowerCase();
+    return validValues.find(opt => String(opt).toLowerCase() === v) || '';
+  }
+  function syncCardsFromSelect() {
+    const val = riskSelect ? String(riskSelect.value).toLowerCase() : '';
+    riskCards.forEach(card => {
+      card.classList.toggle('selected', String(card.getAttribute('data-value')||'').toLowerCase() === val && val !== '');
+    });
+  }
+  function setRiskFromCard(cardValue) {
+    if (!riskSelect) return;
+    const exact = normalizeToChoice(cardValue);
+    riskSelect.value = exact;
+    riskSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    syncCardsFromSelect();
+    if (riskError) riskError.style.display = 'none';
+    if (cardsBox)  cardsBox.classList.remove('is-invalid');
+  }
+  riskCards.forEach(card => card.addEventListener('click', () => setRiskFromCard(card.getAttribute('data-value'))));
+  syncCardsFromSelect(); // marcar al cargar
+
+  /* ===== Submit guard ===== */
+  const submitBtn = document.getElementById('submit-btn');
+  if (submitBtn) {
+    submitBtn.addEventListener('click', function (e) {
+      let ok = true;
+      const category = document.querySelector('[name="category"]');
+      if (category && !category.value) { ok = false; category.classList.add('is-invalid'); } else if (category) category.classList.remove('is-invalid');
+      if (nameInput && !nameInput.value.trim()) { ok = false; nameInput.classList.add('is-invalid'); } else if (nameInput) nameInput.classList.remove('is-invalid');
+      if (riskSelect && !riskSelect.value) { ok = false; if (riskError) riskError.style.display = 'block'; if (cardsBox) cardsBox.classList.add('is-invalid'); }
+      const onset = document.querySelector('[name="onset_timeline"]');
+      if (onset && !onset.value) { ok = false; onset.classList.add('is-invalid'); } else if (onset) onset.classList.remove('is-invalid');
+
+      if (!ok) {
+        e.preventDefault();
+        const target = document.querySelector('.is-invalid') || cardsBox;
+        if (target && target.scrollIntoView) target.scrollIntoView({ behavior:'smooth', block:'center' });
+      }
+    });
+  }
 });
 </script>
+
+<style>
+  .form-control, .form-select { min-height: 38px; background:#fff; }
+  .title-input { font-size: 1.25rem; font-weight: 500; }
+  .form-label { font-weight: 500; margin-bottom: 4px; }
+  .card { box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075); margin-bottom: 1rem; }
+  .card-header { padding: 0.75rem 1rem; }
+
+  /* Risk cards (idéntico a Event) */
+  .risk-rating-container .card { cursor:pointer; transition:.2s; border:2px solid transparent; height:100%; }
+  .risk-rating-container .card:hover { transform: translateY(-2px); box-shadow:0 0.25rem 0.5rem rgba(0,0,0,.1); }
+  .risk-card.compact.selected .card { border-color:#007bff; box-shadow:0 0 0 .2rem rgba(0,123,255,.25); }
+  .risk-card.compact .card-body { padding:.5rem !important; }
+  .risk-icon { font-size:1.2rem; margin-bottom:.3rem; }
+  .risk-low { color:#28a745; }
+  .risk-medium { color:#ffc107; }
+  .risk-high { color:#fd7e14; }
+  .risk-critical { color:#dc3545; }
+  .risk-label { font-weight:500; font-size:.8rem; }
+  .d-none { display:none; }
+  .is-invalid { border:1px solid #dc3545 !important; }
+</style>
 {% endblock %}

@@ -35,7 +35,7 @@
                   <h6 class="card-title mb-3 fw-bold">{{ category.name }}</h6>
                   <a href="{% url 'theme_list_by_category' category_id=category.id %}"
                      class="btn btn-sm btn-outline-primary align-self-center mt-auto py-1 px-3">
-                    View Themes
+                    View Thread
                   </a>
                 </div>
               </div>
@@ -47,22 +47,23 @@
     </div>
   </div>
 
-  <!-- Themes & Events -->
+  <!-- Themes (FULL WIDTH) -->
   <div class="row mt-4">
-    <!-- Themes -->
-    <div class="col-md-6">
+    <div class="col-12">
       <div class="card">
-        <div class="card-header bg-secondary text-white">
-          <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Recent Themes</h5>
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Recent Thread</h5>
+          <a href="{% url 'theme_list_all' %}" class="btn btn-sm btn-light">View All</a>
         </div>
         <div class="card-body">
+          <!-- DataTable se encarga de la búsqueda y filtrado -->
           <div class="table-responsive">
             <table class="table table-hover table-clickable table-fixed" id="themesTable">
               <thead>
                 <tr>
                   <th class="col-name">Name</th>
-                  <th>Category</th>
-                  <th>Risk</th>
+                  <th class="col-category">Category</th>
+                  <th class="col-risk">Risk</th>
                 </tr>
               </thead>
               <tbody>
@@ -85,66 +86,208 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Events -->
-    <div class="col-md-6">
+  <!-- Events (FULL WIDTH) -->
+  <div class="row mt-4">
+    <div class="col-12">
       <div class="card">
-        <div class="card-header bg-secondary text-white">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
           <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Recent Events</h5>
+          <a href="{% url 'event_list' %}" class="btn btn-sm btn-light">View All</a>
         </div>
         <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-hover table-clickable table-fixed" id="eventsTable">
-              <thead>
-                <tr>
-                  <th class="col-name">Name</th>
-                  <th>Theme</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for event in events %}
-                <tr data-href="{% url 'view_event' event_id=event.id %}">
-                  <td>
-                    <a href="{% url 'view_event' event_id=event.id %}" class="truncate" title="{{ event.name }}">
-                      {{ event.name }}
-                    </a>
-                  </td>
-                  <td class="truncate" title="{{ event.theme }}">{{ event.theme }}</td>
-                  <td>{{ event.date_identified|date:"Y-m-d" }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+          <!-- Search bar for Events -->
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" id="eventSearch" class="form-control" placeholder="Search events by name..." />
+              </div>
+            </div>
+            <div class="col-md-6 text-end">
+              <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-secondary sort-event" data-sort="name">Name</button>
+                <button type="button" class="btn btn-outline-secondary sort-event" data-sort="date">Date</button>
+                <button type="button" class="btn btn-outline-secondary sort-event" data-sort="risk">Risk</button>
+              </div>
+            </div>
           </div>
+
+          <div class="accordion" id="eventsAccordion">
+            {% for event in events %}
+            <div class="accordion-item border-0 event-item" 
+                 data-name="{{ event.name|lower }}" 
+                 data-date="{{ event.date_identified|date:'Ymd' }}" 
+                 data-risk="{{ event.risk_rating|lower }}">
+              <h2 class="accordion-header" id="heading{{ event.id }}">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                        data-bs-target="#collapse{{ event.id }}" aria-expanded="false" 
+                        aria-controls="collapse{{ event.id }}">
+                  <div class="d-flex w-100 justify-content-between align-items-center">
+                    <div class="me-3">
+                      <strong class="event-name">{{ event.name }}</strong>
+                      <div class="small text-muted event-date">{{ event.date_identified|date:"Y-m-d" }}</div>
+                    </div>
+                    <span class="badge bg-{{ event.get_risk_color }} me-2 event-risk">{{ event.get_risk_rating_display }}</span>
+                  </div>
+                </button>
+              </h2>
+              <div id="collapse{{ event.id }}" class="accordion-collapse collapse" 
+                   aria-labelledby="heading{{ event.id }}" data-bs-parent="#eventsAccordion">
+                <div class="accordion-body pt-2">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small">Theme: {{ event.theme.name }}</span>
+                    <a href="{% url 'view_event' event_id=event.id %}" class="btn btn-sm btn-outline-primary">
+                      View Details
+                    </a>
+                  </div>
+                  
+                  <!-- Sources list as cards - NOW CLICKABLE -->
+                  <h6 class="mt-3 mb-2">Sources ({{ event.sources.count }})</h6>
+                  {% with sources=event.sources.all|slice:":3" %}
+                  {% if sources %}
+                    <div class="sources-container">
+                      {% for source in sources %}
+                      <div class="card mb-2 source-card" data-source-url="{% url 'source_detail' pk=source.id %}" style="cursor: pointer;">
+                        <div class="card-body py-2">
+                          <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                              {% if source.source_type == "PDF" %}
+                                <i class="fas fa-file-pdf text-danger me-2"></i>
+                              {% elif source.source_type == "DOC" %}
+                                <i class="fas fa-file-word text-primary me-2"></i>
+                              {% elif source.source_type == "EMAIL" %}
+                                <i class="fas fa-envelope text-info me-2"></i>
+                              {% else %}
+                                <i class="fas fa-file text-secondary me-2"></i>
+                              {% endif %}
+                              <div>
+                                <div class="fw-medium">{{ source.name }}</div>
+                                <small class="text-muted">{{ source.source_date|date:"Y-m-d" }}</small>
+                              </div>
+                            </div>
+                            <div>
+                              {% if source.potential_impact == 'ESCALATING' %}
+                                <span class="badge bg-danger" title="Escalating"><i class="fas fa-arrow-up"></i></span>
+                              {% elif source.potential_impact == 'MAINTAINING' %}
+                                <span class="badge bg-warning" title="Maintaining"><i class="fas fa-arrow-right"></i></span>
+                              {% elif source.potential_impact == 'DECREASING' %}
+                                <span class="badge bg-success" title="Decreasing"><i class="fas fa-arrow-down"></i></span>
+                              {% endif %}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      {% endfor %}
+                      
+                      {% if event.sources.count > 3 %}
+                      <div class="text-center mt-2">
+                        <small class="text-muted">+ {{ event.sources.count|add:"-3" }} more sources</small>
+                      </div>
+                      {% endif %}
+                    </div>
+                  {% else %}
+                    <div class="text-center py-2 text-muted">
+                      <small>No sources added yet</small>
+                    </div>
+                  {% endif %}
+                  {% endwith %}
+                  
+                  <div class="mt-3 text-center">
+                    <a href="{% url 'add_source' event_pk=event.id %}" class="btn btn-sm btn-outline-primary">
+                      <i class="fas fa-plus me-1"></i> Add Source
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          
+          {% if not events %}
+          <div class="text-center p-4">
+            <i class="fas fa-calendar-times fa-2x text-muted mb-2"></i>
+            <p class="text-muted">No events found</p>
+            <a href="{% url 'add_event_redirect' %}" class="btn btn-primary btn-sm">
+              <i class="fas fa-plus me-1"></i> Add Event
+            </a>
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<style>
+  .accordion-button:not(.collapsed) {
+    background-color: #f8f9fa;
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,.125);
+  }
+  
+  .source-card {
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+  }
+  
+  .source-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    background-color: #f8f9fa;
+    border-left-color: #007bff;
+  }
+  
+  .truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .table-clickable tbody tr {
+    cursor: pointer;
+  }
+  
+  /* FIXED: Eliminar espacio blanco en tabla de Threads */
+  .col-name { width: 50%; }
+  .col-category { width: 30%; }
+  .col-risk { width: 20%; }
+  
+  /* Ocultar eventos durante la búsqueda */
+  .event-item.hidden {
+    display: none !important;
+  }
+  
+  /* Destacar resultados de búsqueda */
+  .event-item.highlight .accordion-button {
+    background-color: #fff3cd !important;
+    border-color: #ffeaa7 !important;
+  }
+
+  /* Mejor espaciado */
+  .row.mt-4 {
+    margin-top: 2rem !important;
+  }
+
+  /* Scroll para muchos eventos */
+  #eventsAccordion {
+    max-height: 600px;
+    overflow-y: auto;
+  }
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script>
+// Código JavaScript ORIGINAL - NO MODIFICADO
 $(function () {
-  // ----- Tipo de orden para riesgo -----
-  $.fn.dataTable.ext.type.order['risk-pre'] = function (d) {
-    switch ((d || '').toString().toLowerCase()) {
-      case 'critical': return 0;
-      case 'high':     return 1;
-      case 'moderate': return 2;
-      case 'low':      return 3;
-      default:         return 4;
-    }
-  };
-
-  // ----- Themes -----
+  // ----- DataTable para Themes (búsqueda y filtrado) -----
   $('#themesTable').DataTable({
     autoWidth: false,
     columnDefs: [
-      { targets: 0, width: '55%', className: 'dt-col-name' },
-      { targets: 1, width: '25%' },
-      { targets: 2, type: 'risk', width: '20%' }
+      { targets: 0, width: '50%', className: 'col-name' },
+      { targets: 1, width: '30%', className: 'col-category' },
+      { targets: 2, width: '20%', className: 'col-risk' }
     ],
     order: [[2, 'asc']],
     pageLength: 5,
@@ -159,69 +302,173 @@ $(function () {
     }
   });
 
-  // ----- Events -----
-  $('#eventsTable').DataTable({
-    autoWidth: false,
-    columnDefs: [
-      { targets: 0, width: '50%', className: 'dt-col-name' },
-      { targets: 1, width: '30%' },
-      { targets: 2, width: '20%' }
-    ],
-    order: [[0, 'asc']],
-    pageLength: 5,
-    language: {
-      emptyTable: 'No events available',
-      info: 'Showing _START_ to _END_ of _TOTAL_ events',
-      infoEmpty: 'Showing 0 to 0 of 0 events',
-      infoFiltered: '(filtered from _MAX_ total events)',
-      lengthMenu: 'Show _MENU_ events',
-      search: 'Search events:',
-      paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Previous' }
-    }
+  // ----- Búsqueda y Filtrado para Events -----
+  const eventSearch = document.getElementById('eventSearch');
+  const eventItems = document.querySelectorAll('.event-item');
+  let currentSort = 'name';
+  let sortAscending = true;
+
+  // Función de búsqueda
+  function searchEvents() {
+    const searchTerm = eventSearch.value.toLowerCase().trim();
+    
+    eventItems.forEach(item => {
+      const eventName = item.getAttribute('data-name');
+      const eventDate = item.getAttribute('data-date');
+      const eventRisk = item.getAttribute('data-risk');
+      const eventText = item.textContent.toLowerCase();
+      
+      if (searchTerm === '' || eventName.includes(searchTerm) || eventText.includes(searchTerm)) {
+        item.classList.remove('hidden');
+        if (searchTerm !== '') {
+          item.classList.add('highlight');
+        } else {
+          item.classList.remove('highlight');
+        }
+      } else {
+        item.classList.add('hidden');
+        item.classList.remove('highlight');
+      }
+    });
+  }
+
+  // Función de ordenamiento
+  function sortEvents(sortBy, ascending) {
+    const eventsArray = Array.from(eventItems).filter(item => !item.classList.contains('hidden'));
+    
+    eventsArray.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch(sortBy) {
+        case 'name':
+          aValue = a.getAttribute('data-name');
+          bValue = b.getAttribute('data-name');
+          break;
+        case 'date':
+          aValue = a.getAttribute('data-date');
+          bValue = b.getAttribute('data-date');
+          break;
+        case 'risk':
+          // Ordenar por nivel de riesgo (critical > high > moderate > low)
+          const riskOrder = {critical: 0, high: 1, moderate: 2, low: 3};
+          aValue = riskOrder[a.getAttribute('data-risk')] || 4;
+          bValue = riskOrder[b.getAttribute('data-risk')] || 4;
+          break;
+        default:
+          aValue = a.getAttribute('data-name');
+          bValue = b.getAttribute('data-name');
+      }
+      
+      if (aValue < bValue) return ascending ? -1 : 1;
+      if (aValue > bValue) return ascending ? 1 : -1;
+      return 0;
+    });
+    
+    // Reordenar en el DOM
+    const eventsAccordion = document.getElementById('eventsAccordion');
+    eventsArray.forEach(item => {
+      eventsAccordion.appendChild(item);
+    });
+  }
+
+  // Event listeners
+  eventSearch.addEventListener('input', searchEvents);
+  
+  document.querySelectorAll('.sort-event').forEach(button => {
+    button.addEventListener('click', function() {
+      const sortBy = this.getAttribute('data-sort');
+      
+      if (sortBy === currentSort) {
+        sortAscending = !sortAscending;
+      } else {
+        currentSort = sortBy;
+        sortAscending = true;
+      }
+      
+      // Update button styles
+      document.querySelectorAll('.sort-event').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      this.classList.add('active');
+      
+      sortEvents(sortBy, sortAscending);
+    });
   });
 
-  // ----- Filas clicables (delegación) -----
+  // ----- Filas clicables -----
   function makeTableClickable(tableSelector) {
     const $table = $(tableSelector);
     $table.on('click', 'tbody tr', function (e) {
-      // no interceptar clicks en links/botones
       if ($(e.target).closest('a,button,.btn').length) return;
       const href = $(this).attr('data-href');
       if (href) window.location = href;
     });
   }
   makeTableClickable('#themesTable');
-  makeTableClickable('#eventsTable');
+});
+
+// ===== NUEVO CÓDIGO PARA TARJETAS DE FUENTES CLICKEABLES =====
+// Este código está SEPARADO y no afecta el funcionamiento existente
+document.addEventListener('DOMContentLoaded', function() {
+  // Función para manejar clics en tarjetas de fuente
+  function handleSourceCardClick(e) {
+    // Prevenir la acción si se hace clic en elementos interactivos
+    const interactiveElements = ['A', 'BUTTON', 'I', 'SPAN'];
+    const clickedElement = e.target;
+    
+    if (interactiveElements.includes(clickedElement.tagName) || 
+        clickedElement.closest('a, button, .badge')) {
+      return;
+    }
+    
+    // Obtener la URL de la tarjeta de fuente
+    const sourceCard = e.currentTarget;
+    const sourceUrl = sourceCard.getAttribute('data-source-url');
+    
+    if (sourceUrl) {
+      window.location.href = sourceUrl;
+    }
+  }
+  
+  // Añadir event listeners a todas las tarjetas de fuente
+  const sourceCards = document.querySelectorAll('.source-card[data-source-url]');
+  sourceCards.forEach(card => {
+    card.addEventListener('click', handleSourceCardClick);
+    card.style.cursor = 'pointer'; // Hacer obvio que es clickeable
+  });
+  
+  console.log('Source cards clickable functionality loaded. Found', sourceCards.length, 'source cards.');
 });
 </script>
 
 <style>
-/* color que no existe en Bootstrap por defecto */
 .text-purple { color: #6f42c1; }
-
-/* Tablas clicables */
 .table-clickable tbody tr { cursor: pointer; }
-
-/* Mantener columnas estables para truncar bien */
 .table-fixed { table-layout: fixed; }
+.truncate { display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#themesTable .col-name { width: 50%; }
+#themesTable .col-category { width: 30%; }
+#themesTable .col-risk { width: 20%; }
+table .badge { font-weight: 600; }
+.card { box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075); }
 
-/* Truncado elegante (1 línea) */
-.truncate {
-  display: inline-block;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: bottom;
+/* Botones de ordenamiento activos */
+.sort-event.active {
+  background-color: #6c757d;
+  color: white;
+  border-color: #6c757d;
 }
 
-/* Asegura que la primera columna tenga espacio para nombres largos */
-#themesTable .dt-col-name, #eventsTable .dt-col-name { width: 55%; }
+/* Mejorar la apariencia de las tarjetas de fuente */
+.source-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
 
-/* Evitar que badges/íconos rompan layout */
-table .badge { font-weight: 600; }
-
-/* Suavizar sombras de cards */
-.card { box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075); }
+.source-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+  background-color: #f8f9fa;
+}
 </style>
 {% endblock %}

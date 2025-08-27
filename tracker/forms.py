@@ -3,6 +3,10 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils.safestring import mark_safe
+from datetime import date
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
+from urllib.parse import urlparse
 
 
 from .models import (
@@ -281,136 +285,69 @@ class EventForm(forms.ModelForm):
         return self._valid_lv3_from(lv2_selections)
 
     
+
+_URL_VALIDATOR = URLValidator(schemes=["http", "https"])
+
+def _norm(s: str) -> str:
+    return " ".join((s or "").strip().lower().split())
+
+
 class SourceForm(forms.ModelForm):
-    # Limitar el dropdown a PDF / DOC / EMAIL, con opción vacía al inicio
-    SOURCE_TYPES = [
-        ("", "---------"),
-        ("PDF", "PDF"),
-        ("DOC", "DOC / DOCX"),
-        ("EMAIL", "Email (link o .eml/.msg)"),
-    ]
 
-    # Radios con iconos para Potential Impact
-    POTENTIAL_IMPACT_CHOICES = [
-        ("ESCALATING", mark_safe('<i class="fas fa-arrow-up text-danger"></i> Escalating')),
-        ("MAINTAINING", mark_safe('<i class="fas fa-arrow-right text-warning"></i> Maintaining')),
-        ("DECREASING", mark_safe('<i class="fas fa-arrow-down text-success"></i> Decreasing')),
-    ]
-
-    source_type = forms.ChoiceField(
-        choices=SOURCE_TYPES,
-        required=True,
-        widget=forms.Select(attrs={"class": "form-select", "id": "id_source_type"})
-    )
-
-    potential_impact = forms.ChoiceField(
-        choices=POTENTIAL_IMPACT_CHOICES,
-        required=False,
-        widget=forms.RadioSelect(attrs={"class": "list-unstyled"})
-    )
+    source_type = forms.CharField(required=False, widget=forms.HiddenInput())
 
     class Meta:
         model = Source
         fields = [
+            "event",
             "name",
-            "source_type",
             "source_date",
             "summary",
             "potential_impact",
             "potential_impact_notes",
             "link_or_file",
-            "file_upload",
-            "event",
+            "file_upload",        # Widget por defecto (ClearableFileInput + "clear" en edit)
+            "source_type",
         ]
         widgets = {
-            "name": forms.TextInput(attrs={"class": "form-control"}),
-            "source_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
-            "summary": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
-            "potential_impact_notes": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
-            "link_or_file": forms.URLInput(attrs={"class": "form-control", "placeholder": "https://... o mailto:..."}),
-            "file_upload": forms.FileInput(attrs={"class": "form-control", "accept": ".pdf,.doc,.docx,.eml,.msg"}),
             "event": forms.HiddenInput(),
+            "name": forms.TextInput(attrs={"maxlength": 30}),
+            "source_date": forms.DateInput(attrs={"type": "date", "id": "id_source_date"}),
+            "summary": forms.Textarea(attrs={"rows": 3, "id": "id_summary"}),
+            "potential_impact_notes": forms.Textarea(attrs={"rows": 4}),
+            "link_or_file": forms.TextInput(attrs={
+                "id": "id_link_or_file",
+                "placeholder": "http(s):// or mailto:",
+            }),
+            # MUY IMPORTANTE: NO cambiar el widget de file_upload aquí.
         }
-        labels = {
-            "link_or_file": "URL",
-            "file_upload": "File Upload",
-        }
 
-    # ---------- helpers ----------
-    @staticmethod
-    def _ext(filename: str) -> str:
-        return os.path.splitext(filename or "")[1].lower()
+    # Validaciones coherentes con la UI
+    def clean_name(self):
+        name = (self.cleaned_data.get("name") or "").strip()
+        if len(name) > 30:
+            raise forms.ValidationError("Name must be at most 30 characters.")
+        return name
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Nunca requerimos 'event' en el form visible
-        self.fields["event"].required = False
+    def clean_source_date(self):
+        d = self.cleaned_data.get("source_date")
+        if d and d > timezone.localdate():
+            raise forms.ValidationError("Source date cannot be in the future.")
+        return d
 
-        # Prefijar source_type cuando editas un Source existente
-        if self.instance and self.instance.pk:
-            if self.instance.file_upload:
-                ext = self._ext(self.instance.file_upload.name)
-                if ext == ".pdf":
-                    self.initial.setdefault("source_type", "PDF")
-                elif ext in (".doc", ".docx"):
-                    self.initial.setdefault("source_type", "DOC")
-                elif ext in (".eml", ".msg"):
-                    self.initial.setdefault("source_type", "EMAIL")
-            elif self.instance.link_or_file:
-                # Si el link es mailto: lo tratamos como EMAIL
-                if str(self.instance.link_or_file).startswith("mailto:"):
-                    self.initial.setdefault("source_type", "EMAIL")
-
-    # ---------- validaciones ----------
-    def clean(self):
-        cleaned = super().clean()
-        stype = cleaned.get("source_type")
-        url = cleaned.get("link_or_file")
-        f = cleaned.get("file_upload")
-
-        # Reglas por tipo
-        if not stype:
-            raise forms.ValidationError("Please select a Source Type.")
-
-        if stype == "PDF":
-            if not f:
-                raise forms.ValidationError("For PDF please upload a .pdf file.")
-            ext = self._ext(f.name)
-            if ext != ".pdf":
-                raise forms.ValidationError("Invalid file: only .pdf is allowed for PDF type.")
-            cleaned["link_or_file"] = ""  # aseguramos exclusividad
-
-        elif stype == "DOC":
-            if not f:
-                raise forms.ValidationError("For DOC please upload a .doc or .docx file.")
-            ext = self._ext(f.name)
-            if ext not in (".doc", ".docx"):
-                raise forms.ValidationError("Invalid file: only .doc or .docx is allowed for DOC type.")
-            cleaned["link_or_file"] = ""
-
-        elif stype == "EMAIL":
-            # Email permite URL (http/https o mailto) y/o archivo .eml/.msg
-            if not url and not f:
-                raise forms.ValidationError("For Email provide a URL (http/https or mailto) or upload an .eml/.msg file.")
-            if url and not (url.startswith("http://") or url.startswith("https://") or url.startswith("mailto:")):
-                raise forms.ValidationError("URL must start with http://, https:// or mailto:.")
-            if f:
-                ext = self._ext(f.name)
-                if ext not in (".eml", ".msg"):
-                    raise forms.ValidationError("Email attachments must be .eml or .msg.")
-
-        # Límite de tamaño / extensiones permitidas (si tienes settings configurados)
-        if f:
-            ext = self._ext(f.name)
-            valid_exts = getattr(settings, "VALID_FILE_EXTENSIONS", {".pdf", ".doc", ".docx", ".eml", ".msg"})
-            max_size = getattr(settings, "MAX_UPLOAD_SIZE", 5 * 1024 * 1024)  # 5MB por defecto
-            if ext not in valid_exts:
-                raise forms.ValidationError(f"Unsupported file extension. Allowed: {', '.join(sorted([x[1:] for x in valid_exts]))}")
-            if f.size > max_size:
-                raise forms.ValidationError(f"File too large. Max size is {round(max_size/1024/1024)} MB.")
-
-        return cleaned
-    
+    def clean_link_or_file(self):
+        v = (self.cleaned_data.get("link_or_file") or "").strip()
+        if not v:
+            return v  # vacío es válido (puede venir solo archivo)
+        if v.startswith("mailto:"):
+            # mailto:correo@dominio
+            if "@" not in v or len(v) <= len("mailto:"):
+                raise forms.ValidationError("Invalid mailto link.")
+            return v
+        p = urlparse(v)
+        if p.scheme not in ("http", "https") or not p.netloc:
+            raise forms.ValidationError("Enter a valid http/https URL.")
+        return v
 class RegisterForm(UserCreationForm):
     email = forms.EmailField(
         required=True,

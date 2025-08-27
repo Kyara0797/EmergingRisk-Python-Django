@@ -3,51 +3,82 @@
 {% block content %}
 <div class="container mt-4">
   <div class="card">
-    <!-- Header estilo Event Detail -->
+    <!-- Header -->
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
       <h4 class="mb-0">{{ theme.name }}</h4>
-      <div class="d-flex gap-2">
-        <a href="{% url 'edit_theme' pk=theme.pk %}" class="btn btn-warning btn-sm">
-          <i class="fas fa-edit me-1"></i> Edit Theme
+      <div class="d-flex gap-2 header-actions">
+        <a href="{% url 'edit_theme' pk=theme.pk %}" class="btn btn-warning btn-sm fw-semibold">
+          <i class="fas fa-edit me-1"></i> Edit Thread
         </a>
-        <a href="{% url 'add_event' theme_pk=theme.pk %}" class="btn btn-light btn-sm">
-          <i class="fas fa-plus me-1"></i> Add Event
+        <!-- Contraste alto sobre bg-primary -->
+        <a href="{% url 'add_event' theme_id=theme.id %}" class="btn btn-light btn-sm text-primary fw-semibold shadow-sm">
+          <i class="fas fa-plus me-1"></i> Event
         </a>
       </div>
     </div>
 
     <div class="card-body">
-      <!-- Detalles del Theme -->
-      <div class="row mb-4">
-        <div class="col-md-6">
-          <h5>Theme Details</h5>
-          <p><strong>Category:</strong> {{ theme.category }}</p>
+      <!-- Theme details -->
+      <div class="theme-details-container mb-4 p-3 bg-light rounded">
+        <h5 class="mb-3 border-bottom pb-2">Thread Details</h5>
+        <div class="row">
+          <div class="col-md-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-folder-open text-primary me-2"></i>
+                <strong class="text-muted">Category</strong>
+              </div>
+              <p class="mb-0 fw-bold">{{ theme.category }}</p>
+            </div>
+          </div>
 
-          <p class="mb-1"><strong>Risk Rating:</strong></p>
-          <span class="badge bg-{{ theme.get_risk_color }}">
-            <i class="fas
-              {% if theme.risk_rating == 'low' %}fa-arrow-down
-              {% elif theme.risk_rating == 'moderate' %}fa-equals
-              {% elif theme.risk_rating == 'high' %}fa-arrow-up
-              {% elif theme.risk_rating == 'critical' %}fa-skull
-              {% endif %} me-1"></i>
-            {{ theme.get_risk_rating_display }}
-          </span>
+          <div class="col-md-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                <strong class="text-muted">Risk Rating</strong>
+              </div>
+              <span class="badge bg-{{ theme.get_risk_color }} p-2">
+                <i class="fas
+                  {% if theme.risk_rating == 'low' %}fa-arrow-down
+                  {% elif theme.risk_rating == 'moderate' %}fa-equals
+                  {% elif theme.risk_rating == 'high' %}fa-arrow-up
+                  {% elif theme.risk_rating == 'critical' %}fa-skull
+                  {% endif %} me-1"></i>
+                {{ theme.get_risk_rating_display }}
+              </span>
+            </div>
+          </div>
 
-          {% if theme.onset_timeline %}
-            <p class="mt-3"><strong>Onset timeline:</strong> {{ theme.get_onset_timeline_display|default:theme.onset_timeline }}</p>
-          {% endif %}
-        </div>
+          <div class="col-md-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-clock text-info me-2"></i>
+                <strong class="text-muted">Onset Timeline</strong>
+              </div>
+              <p class="mb-0 fw-bold">
+                {% if theme.onset_timeline %}
+                  {{ theme.get_onset_timeline_display|default:theme.onset_timeline }}
+                {% else %}
+                  <span class="text-muted">Not specified</span>
+                {% endif %}
+              </p>
+            </div>
+          </div>
 
-        <div class="col-md-6">
-          <h5>Description</h5>
-          <div class="border p-3 bg-light rounded">
-            {{ theme.description|default:"None" }}
+          <div class="col-md-3">
+            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+              <div class="d-flex align-items-center mb-2">
+                <i class="fas fa-calendar-alt text-success me-2"></i>
+                <strong class="text-muted">Events</strong>
+              </div>
+              <p class="mb-0 fw-bold">{{ theme.events.count }} {{ theme.events.count|pluralize:"event,events" }}</p>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Eventos relacionados -->
+      <!-- Related Events -->
       <div class="mt-2">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5 class="mb-0">Related Events</h5>
@@ -70,9 +101,7 @@
               <tbody>
                 {% for event in theme.events.all %}
                 <tr>
-                  <td>
-                    <a href="{% url 'view_event' event_id=event.pk %}">{{ event.name }}</a>
-                  </td>
+                  <td><a href="{% url 'view_event' event_id=event.pk %}">{{ event.name }}</a></td>
                   <td>{{ event.date_identified|date:"Y-m-d" }}</td>
                   <td>
                     <span class="badge bg-{{ event.get_risk_color }}">
@@ -92,19 +121,32 @@
         {% else %}
           <div class="alert alert-info">
             <i class="fas fa-info-circle me-1"></i>
-            No events have been added to this theme yet.
-            <a href="{% url 'add_event' theme_pk=theme.pk %}" class="alert-link">Add the first event</a>
+            No events have been added to this Thread yet.
+            <a href="{% url 'add_event' theme_id=theme.pk %}" class="alert-link">Add the first event</a>
           </div>
         {% endif %}
       </div>
     </div>
   </div>
 </div>
+
+<style>
+  .detail-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+  .detail-card:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important; }
+  .theme-details-container { background: linear-gradient(to right, #f8f9fa, #f0f4f8) !important; }
+
+  /* Botones en el header azul */
+  .header-actions .btn { border-radius: .55rem; }
+  .header-actions .btn-light { background:#fff; border:0; }
+  .header-actions .btn-light:hover { background:#f8f9fa; }
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // DataTables opcional si está cargado (mismo patrón que Event Detail)
   if (window.jQuery && $.fn.DataTable) {
     $(function () {
       $('#themeEventsTable').DataTable({
