@@ -443,65 +443,37 @@ class RiskTaxonomyLv3(models.Model):
     
     def __str__(self):
         return self.name
-
+ 
 class Source(models.Model):
     is_active = models.BooleanField(default=True, db_index=True)
-    
+
     SOURCE_TYPE_CHOICES = [
-        ('DOC', 'DOC'),
-        ('EMAIL', 'Email'),
-        ('PDF', 'PDF'),
+        ('LINK', 'Link'),
+        ('FILE', 'File'),
+        ('MIXED', 'Mixed'),
     ]
 
-    source_type = models.CharField(
-        max_length=50,
-        choices=SOURCE_TYPE_CHOICES,
-        default='PDF', 
-    )
-    
+    event = models.ForeignKey('tracker.Event', on_delete=models.CASCADE, related_name='sources', db_index=True)
+    name = models.CharField(max_length=200)
+
+    # Usa SOLO este campo (elimina cualquier duplicado previo)
+    source_type = models.CharField(max_length=10, choices=SOURCE_TYPE_CHOICES, default='FILE')
+
+    source_date = models.DateField()
+    summary = models.TextField()
+
     POTENTIAL_IMPACT_CHOICES = [
         ('ESCALATING', 'Escalating'),
         ('MAINTAINING', 'Maintaining'),
         ('DECREASING', 'Decreasing'),
     ]
-
-    event = models.ForeignKey(
-        'tracker.Event',
-        on_delete=models.CASCADE,
-        related_name='sources',
-        db_index=True
-    )
-    name = models.CharField(max_length=200)
-    source_type = models.CharField(
-        max_length=50,
-        choices=SOURCE_TYPE_CHOICES,
-        default='OTHER'
-    )
-    source_date = models.DateField()
-    summary = models.TextField()
-    
-
-    potential_impact = models.CharField(
-        max_length=20,
-        choices=POTENTIAL_IMPACT_CHOICES,
-        blank=True,
-        null=True
-    )
+    potential_impact = models.CharField(max_length=20, choices=POTENTIAL_IMPACT_CHOICES, blank=True, null=True)
     potential_impact_notes = models.TextField(blank=True, null=True)
 
     link_or_file = models.URLField(max_length=500, blank=True)
-    file_upload = models.FileField(
-        upload_to='sources/%Y/%m/%d/',
-        blank=True,
-        null=True
-    )
+    file_upload = models.FileField(upload_to='sources/%Y/%m/%d/', blank=True, null=True)
 
-    created_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='created_sources'
-    )
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_sources')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -514,7 +486,28 @@ class Source(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_source_type_display()})"
-    
+
+
+class SourceFileVersion(models.Model):
+    source = models.ForeignKey(
+        Source,
+        on_delete=models.CASCADE,
+        related_name="file_history",
+        db_index=True,
+    )
+    # Apuntamos al mismo archivo antiguo; no lo copiamos ni movemos
+    file = models.FileField(upload_to='sources/%Y/%m/%d/')
+    replaced_at = models.DateTimeField(auto_now_add=True)
+    replaced_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+    note = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["-replaced_at"]
+
+    def __str__(self):
+        base = (self.file.name or "").split("/")[-1]
+        return f"{base} ({self.replaced_at:%Y-%m-%d})"
+
 class UserAccessLog(models.Model):
     user = models.ForeignKey(
         User,

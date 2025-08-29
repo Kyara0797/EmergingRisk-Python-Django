@@ -8,6 +8,8 @@ from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from urllib.parse import urlparse
 
+ALLOWED_FILE_EXTS = {'.pdf', '.doc', '.docx'}
+
 
 from .models import (
     Category,
@@ -24,6 +26,7 @@ from .models import (
 from config import settings
 import os.path
 from tracker.models import RISK_CHOICES
+from django.forms.widgets import ClearableFileInput
 
 ALLOWED_EXTS = {
     'PDF': {'.pdf'},
@@ -292,9 +295,30 @@ def _norm(s: str) -> str:
     return " ".join((s or "").strip().lower().split())
 
 
-class SourceForm(forms.ModelForm):
+class MultiFileInput(forms.ClearableFileInput):
+    """File input con multiple=True (para extra_files, no para file_upload del modelo)."""
+    allow_multiple_selected = True
 
-    source_type = forms.CharField(required=False, widget=forms.HiddenInput())
+
+from django import forms
+from .models import Source
+from urllib.parse import urlparse
+
+class SourceForm(forms.ModelForm):
+    # Fecha/hora con control HTML5 y formato sin segundos
+    source_date = forms.DateTimeField(
+        required=True,
+        widget=forms.DateTimeInput(
+            attrs={
+                "type": "datetime-local",
+                "class": "form-control",
+                "placeholder": "Selecciona fecha y hora",
+                "id": "id_source_date",
+            },
+            format="%Y-%m-%dT%H:%M",
+        ),
+        input_formats=["%Y-%m-%dT%H:%M"],
+    )
 
     class Meta:
         model = Source
@@ -302,52 +326,85 @@ class SourceForm(forms.ModelForm):
             "event",
             "name",
             "source_date",
+            "link_or_file",
+            "file_upload",
             "summary",
+            "source_type",
             "potential_impact",
             "potential_impact_notes",
-            "link_or_file",
-            "file_upload",        # Widget por defecto (ClearableFileInput + "clear" en edit)
-            "source_type",
         ]
         widgets = {
-            "event": forms.HiddenInput(),
-            "name": forms.TextInput(attrs={"maxlength": 30}),
-            "source_date": forms.DateInput(attrs={"type": "date", "id": "id_source_date"}),
-            "summary": forms.Textarea(attrs={"rows": 3, "id": "id_summary"}),
-            "potential_impact_notes": forms.Textarea(attrs={"rows": 4}),
-            "link_or_file": forms.TextInput(attrs={
-                "id": "id_link_or_file",
-                "placeholder": "http(s):// or mailto:",
-            }),
-            # MUY IMPORTANTE: NO cambiar el widget de file_upload aquí.
+            "event": forms.Select(attrs={"class": "form-select"}),
+            "name": forms.TextInput(attrs={"class": "form-control", "maxlength": 30}),
+            "link_or_file": forms.URLInput(attrs={"class": "form-control", "id": "id_link_or_file"}),
+            "summary": forms.Textarea(attrs={"class": "form-control", "rows": 6}),
+            "potential_impact_notes": forms.Textarea(attrs={"class": "form-control", "rows": 6}),
+            # potential_impact y source_type pueden quedarse con sus widgets por defecto (select/hidden)
         }
 
-    # Validaciones coherentes con la UI
-    def clean_name(self):
-        name = (self.cleaned_data.get("name") or "").strip()
-        if len(name) > 30:
-            raise forms.ValidationError("Name must be at most 30 characters.")
-        return name
+    # --- Normaliza el valor al entrar al form para instancias existentes ---
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        inst = getattr(self, "instance", None)
+        if inst and getattr(inst, "pk", None) and getattr(inst, "source_date", None):
+            # Muestra el valor en hora local con el formato del widget datetime-local
+            local_dt = timezone.localtime(inst.source_date)
+            self.initial["source_date"] = local_dt.strftime("%Y-%m-%dT%H:%M")
 
-    def clean_source_date(self):
-        d = self.cleaned_data.get("source_date")
-        if d and d > timezone.localdate():
-            raise forms.ValidationError("Source date cannot be in the future.")
-        return d
-
+    # --- Validación: URL o mailto válido (si viene) ---
     def clean_link_or_file(self):
-        v = (self.cleaned_data.get("link_or_file") or "").strip()
-        if not v:
-            return v  # vacío es válido (puede venir solo archivo)
-        if v.startswith("mailto:"):
-            # mailto:correo@dominio
-            if "@" not in v or len(v) <= len("mailto:"):
-                raise forms.ValidationError("Invalid mailto link.")
-            return v
-        p = urlparse(v)
-        if p.scheme not in ("http", "https") or not p.netloc:
-            raise forms.ValidationError("Enter a valid http/https URL.")
-        return v
+        val = (self.cleaned_data.get("link_or_file") or "").strip()
+        if not val:
+            return val  # opcional
+
+        if val.lower().startswith("mailto:"):
+            if "@" not in val[7:]:
+                raise forms.ValidationError("Enter a valid mailto: address.")
+            return val
+
+        u = urlparse(val)
+        if u.scheme not in ("http", "https") or not u.netloc:
+            raise forms.ValidationError("Enter a valid URL (http/https) or a mailto: address.")
+        return val
+
+    # --- Validación: fecha/hora no puede ser futuro; vuelve aware si hace falta ---
+    def clean_source_date(self):
+        dt = self.cleaned_data.get("source_date")
+        if not dt:
+            return dt
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(dt, timezone.get_current_timezone())
+        if dt > timezone.now():
+            raise forms.ValidationError("La fecha/hora no puede ser en el futuro.")
+        return dt
+
+    # --- Limpieza general: permitir que 'extra_files' (fuera del form) cuente como adjunto ---
+    def clean(self):
+        cleaned = super().clean()
+
+        # Estos dos son los campos del form:
+        has_main_link = bool((cleaned.get("link_or_file") or "").strip())
+        has_main_file = bool(cleaned.get("file_upload"))
+
+        # Esto viene por request.FILES pero fuera de los fields del form:
+        extra_files = []
+        if hasattr(self.files, "getlist"):
+            try:
+                # Soportamos múltiples inputs llamados 'extra_files'
+                # (la vista ya usa request.FILES.lists(), aquí sólo una ayuda mínima)
+                extra_files = self.files.getlist("extra_files")
+            except Exception:
+                extra_files = []
+
+        # Si tu lógica en la vista exige al menos un adjunto, aquí NO bloqueamos:
+        # dejamos que la vista haga el check definitivo (así no rompemos nada).
+        # Pero si quisieras forzar desde el form, descomenta lo de abajo.
+        #
+        # if not (has_main_link or has_main_file or extra_files):
+        #     raise forms.ValidationError("Please add at least one link or file before saving.")
+
+        return cleaned
+    
 class RegisterForm(UserCreationForm):
     email = forms.EmailField(
         required=True,

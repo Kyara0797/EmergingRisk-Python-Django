@@ -1,195 +1,340 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
+{% with src=object %}
 <div class="container mt-4">
   <div class="card">
     <!-- Header -->
     <div class="card-header bg-primary text-white">
       <div class="d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center gap-3">
-          <h4 class="mb-0">{{ source.name }}</h4>
-          {% if source.is_active %}
-            <span class="badge bg-success">Active</span>
-          {% else %}
-            <span class="badge bg-secondary">Archived</span>
-          {% endif %}
-        </div>
-
-        <div class="d-flex align-items-center gap-2">
-          <a href="{% url 'edit_source' pk=source.id %}" class="btn btn-warning btn-sm">
+        <h4 class="mb-0">
+          <i class="fas fa-file-alt me-2"></i>Source: {{ src.name }}
+          <small class="ms-2 fw-normal">for
+            <a class="text-white text-decoration-underline" href="{% url 'view_event' event_id=src.event.id %}">
+              {{ src.event.name }}
+            </a>
+          </small>
+        </h4>
+        <div class="d-flex gap-2">
+          <a href="{% url 'edit_source' pk=src.id %}" class="btn btn-warning btn-sm">
             <i class="fas fa-edit me-1"></i> Edit
           </a>
-
-          {% if source.is_active %}
-            <a href="{% url 'toggle_source_active' pk=source.id %}"
-               class="btn btn-danger btn-sm"
-               onclick="return confirm('Archive this source? You can restore it later.');">
+          {% if src.is_active %}
+            <a href="{% url 'toggle_source_active' pk=src.id %}" class="btn btn-outline-light btn-sm"
+               onclick="return confirm('Archive this source bundle? You can restore it later.');">
               <i class="fas fa-archive me-1"></i> Archive
             </a>
           {% else %}
-            <a href="{% url 'toggle_source_active' pk=source.id %}"
-               class="btn btn-success btn-sm"
-               onclick="return confirm('Restore this source?');">
-              <i class="fas fa-undo me-1"></i> Restore
+            <a href="{% url 'toggle_source_active' pk=src.id %}" class="btn btn-outline-light btn-sm"
+               onclick="return confirm('Restore this source bundle?');">
+              <i class="fas fa-rotate-left me-1"></i> Restore
             </a>
           {% endif %}
-
-          <a href="{% url 'view_event' event_id=source.event.id %}" class="btn btn-secondary btn-sm">
+          <a href="{% url 'view_event' event_id=src.event.id %}" class="btn btn-light btn-sm">
             <i class="fas fa-arrow-left me-1"></i> Back to Event
           </a>
         </div>
       </div>
     </div>
 
-    <!-- Body -->
     <div class="card-body">
-      <!-- Source details - Rediseñado en tarjetas -->
-      <div class="source-details-container mb-4 p-3 bg-light rounded">
-        <h5 class="mb-3 border-bottom pb-2">Source Details</h5>
-        <div class="row">
-          <!-- Event -->
-          <div class="col-md-3 mb-3">
-            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
-              <div class="d-flex align-items-center mb-2">
-                <i class="fas fa-calendar-alt text-primary me-2"></i>
-                <strong class="text-muted">Event</strong>
-              </div>
-              <p class="mb-0 fw-bold">
-                <a href="{% url 'view_event' event_id=source.event.id %}">{{ source.event.name }}</a>
-              </p>
+      <!-- ===== Overview ===== -->
+      <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+          <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+            <div class="d-flex align-items-center mb-2">
+              <i class="fas fa-sitemap text-primary me-2"></i>
+              <strong class="text-muted">Event</strong>
             </div>
+            <p class="mb-0 fw-bold">
+              <a href="{% url 'view_event' event_id=src.event.id %}">{{ src.event.name }}</a>
+            </p>
           </div>
-          
-          <!-- Type -->
-          <div class="col-md-3 mb-3">
-            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
-              <div class="d-flex align-items-center mb-2">
-                <i class="fas fa-tag text-info me-2"></i>
-                <strong class="text-muted">Type</strong>
-              </div>
-              <p class="mb-0">
-                <span class="badge bg-info">{{ source.get_source_type_display }}</span>
-              </p>
+        </div>
+
+        <div class="col-md-3 mb-3">
+          <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+            <div class="d-flex align-items-center mb-2">
+              <i class="fas fa-calendar-day text-info me-2"></i>
+              <strong class="text-muted">Date</strong>
             </div>
+            <p class="mb-0 fw-bold">{{ src.source_date|date:"Y-m-d" }}</p>
           </div>
-          
-          <!-- Date -->
-          <div class="col-md-3 mb-3">
-            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
-              <div class="d-flex align-items-center mb-2">
-                <i class="fas fa-calendar-day text-success me-2"></i>
-                <strong class="text-muted">Date</strong>
-              </div>
-              <p class="mb-0 fw-bold">{{ source.source_date|date:"Y-m-d" }}</p>
+        </div>
+
+        <div class="col-md-3 mb-3">
+          <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+            <div class="d-flex align-items-center mb-2">
+              <i class="fas fa-file text-dark me-2"></i>
+              <strong class="text-muted">Type</strong>
             </div>
+            <p class="mb-0">
+              {% if src.source_type == 'MIXED' %}
+                <span class="badge bg-dark">Mixed</span>
+              {% elif src.source_type == 'FILE' %}
+                <span class="badge bg-secondary">File</span>
+              {% elif src.source_type == 'LINK' %}
+                <span class="badge bg-info">Link</span>
+              {% else %}
+                <span class="badge bg-light text-dark">-</span>
+              {% endif %}
+            </p>
           </div>
-          
-          <!-- Potential Impact -->
-          <div class="col-md-3 mb-3">
-            <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
-              <div class="d-flex align-items-center mb-2">
-                <i class="fas fa-chart-line text-warning me-2"></i>
-                <strong class="text-muted">Potential Impact</strong>
-              </div>
-              <p class="mb-0 fw-bold">
-                {% if source.potential_impact == 'ESCALATING' %}
-                  <i class="fas fa-arrow-up text-danger"></i> Escalating
-                {% elif source.potential_impact == 'MAINTAINING' %}
-                  <i class="fas fa-arrow-right text-warning"></i> Maintaining
-                {% elif source.potential_impact == 'DECREASING' %}
-                  <i class="fas fa-arrow-down text-success"></i> Decreasing
+        </div>
+
+        <div class="col-md-3 mb-3">
+          <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
+            <div class="d-flex align-items-center mb-2">
+              <i class="fas fa-toggle-on {% if src.is_active %}text-success{% else %}text-secondary{% endif %} me-2"></i>
+              <strong class="text-muted">Status</strong>
+            </div>
+            {% if src.is_active %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-secondary">Archived</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Attachments & Links (bundle) ===== -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-light">
+          <h5 class="m-0"><i class="fas fa-paperclip me-2"></i>Attachments & Links</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <!-- Links -->
+            <div class="col-md-6 mb-3">
+              <h6 class="text-muted"><i class="fas fa-link me-2"></i>Links</h6>
+              <ul class="list-group scroll-container" style="max-height:260px; overflow-y:auto;">
+                {% if bundle_links %}
+                  {% for link in bundle_links %}
+                    <li class="list-group-item d-flex justify-content-between align-items-start {% if not link.is_active %}text-muted bg-light{% endif %}">
+                      <div class="me-2">
+                        {% if link.is_mailto %}
+                          <i class="fas fa-envelope me-2"></i>
+                          <a href="{{ link.url }}">{{ link.url }}</a>
+                        {% else %}
+                          <i class="fas fa-external-link-alt me-2"></i>
+                          <a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.url }}</a>
+                        {% endif %}
+                        {% if not link.is_active %}<span class="badge bg-secondary ms-2">Archived</span>{% endif %}
+                      </div>
+                      <span class="badge bg-info">Link</span>
+                    </li>
+                  {% endfor %}
                 {% else %}
-                  <em class="text-muted">-</em>
+                  <li class="list-group-item"><em class="text-muted">No links.</em></li>
                 {% endif %}
-              </p>
+              </ul>
+            </div>
+
+            <!-- Files -->
+            <div class="col-md-6 mb-3">
+              <h6 class="text-muted"><i class="fas fa-file me-2"></i>Files</h6>
+              <ul class="list-group scroll-container" style="max-height:260px; overflow-y:auto;">
+                {% if bundle_files %}
+                  {% for file in bundle_files %}
+                    <li class="list-group-item d-flex justify-content-between align-items-start {% if not file.is_active %}text-muted bg-light{% endif %}">
+                      <div class="me-2">
+                        {% if file.is_pdf %}
+                          <i class="far fa-file-pdf me-2"></i>
+                        {% elif file.is_doc %}
+                          <i class="far fa-file-word me-2"></i>
+                        {% elif file.is_email %}
+                          <i class="far fa-envelope-open me-2"></i>
+                        {% else %}
+                          <i class="far fa-file me-2"></i>
+                        {% endif %}
+                        <a href="{{ file.url }}" target="_blank" rel="noopener">{{ file.name }}</a>
+                        {% if not file.is_active %}<span class="badge bg-secondary ms-2">Archived</span>{% endif %}
+                      </div>
+                      <span class="badge bg-secondary">File</span>
+                    </li>
+                  {% endfor %}
+                {% else %}
+                  <li class="list-group-item"><em class="text-muted">No files.</em></li>
+                {% endif %}
+              </ul>
+              <div class="form-text mt-2">Supported: .pdf, .doc, .docx, .eml, .msg</div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Content Section -->
-      <div class="content-container mb-4 p-3 bg-light rounded">
-        <h5 class="mb-3 border-bottom pb-2">Content</h5>
-        <div class="row">
-          <div class="col-12">
-            <div class="detail-card p-3 bg-white rounded shadow-sm">
-              {% if source.link_or_file %}
-                <a href="{{ source.link_or_file }}" target="_blank" class="btn btn-outline-primary">
-                  <i class="fas fa-external-link-alt me-1"></i> Visit URL
-                </a>
-                <div class="mt-2 small text-muted">{{ source.link_or_file }}</div>
-              {% elif source.file_upload %}
-                <a href="{{ source.file_upload.url }}" target="_blank" class="btn btn-outline-secondary">
-                  <i class="fas fa-download me-1"></i> Download File
-                </a>
-                <div class="mt-2 small text-muted">{{ source.file_upload.name }}</div>
+
+      {% if file_history %}
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-light">
+          <h5 class="m-0"><i class="fas fa-clock-rotate-left me-2"></i>Main file history</h5>
+        </div>
+        <div class="card-body">
+          <ul class="list-group">
+            {% for v in file_history %}
+              <li class="list-group-item d-flex justify-content-between align-items-start">
+                <div class="me-2">
+                  <i class="far fa-file me-2"></i>
+                  <a href="{{ v.file.url }}" target="_blank" rel="noopener">
+                    {{ v.file.name|slice:"-80:" }}
+                  </a>
+                  <div class="small text-muted">
+                    {{ v.replaced_at|date:"Y-m-d H:i" }}
+                    {% if v.replaced_by %} · by {{ v.replaced_by.username }}{% endif %}
+                    {% if v.note %} · {{ v.note }}{% endif %}
+                  </div>
+                </div>
+                <span class="badge bg-secondary">History</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      {% endif %}
+
+
+
+      <!-- ===== Summary ===== -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-light">
+          <h5 class="m-0"><i class="fas fa-align-left me-2"></i>Summary</h5>
+        </div>
+        <div class="card-body">
+          {% if src.summary %}
+            <div class="p-2 bg-white rounded">{{ src.summary|linebreaks }}</div>
+          {% else %}
+            <em class="text-muted">No summary provided.</em>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- ===== Bundle Items (compact table) ===== -->
+      {% if bundle_items %}
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-light">
+          <h5 class="m-0"><i class="fas fa-layer-group me-2"></i>Bundle Items</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Link / File</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for s in bundle_items %}
+                <tr class="{% if not s.is_active %}table-light text-muted{% endif %}">
+                  <td class="text-nowrap">
+                    {% if s.source_type == 'MIXED' %}
+                      <span class="badge bg-dark">Mixed</span>
+                    {% elif s.source_type == 'FILE' %}
+                      <span class="badge bg-secondary">File</span>
+                    {% else %}
+                      <span class="badge bg-info">Link</span>
+                    {% endif %}
+                  </td>
+                  <td style="max-width:480px;">
+                    {% if s.file_upload %}
+                      <a href="{{ s.file_upload.url }}" target="_blank" rel="noopener">
+                        <i class="fas fa-paperclip me-1"></i>{{ s.file_upload.name }}
+                      </a>
+                    {% elif s.link_or_file %}
+                      {% if s.link_or_file|slice:":7" == "mailto:" %}
+                        <i class="fas fa-envelope me-1"></i> <a href="{{ s.link_or_file }}">{{ s.link_or_file }}</a>
+                      {% else %}
+                        <i class="fas fa-external-link-alt me-1"></i> <a href="{{ s.link_or_file }}" target="_blank" rel="noopener">{{ s.link_or_file }}</a>
+                      {% endif %}
+                    {% else %}
+                      <em class="text-muted">—</em>
+                    {% endif %}
+                  </td>
+                  <td class="text-nowrap">{{ s.source_date|date:"Y-m-d" }}</td>
+                  <td>
+                    {% if s.is_active %}
+                      <span class="badge bg-success">Active</span>
+                    {% else %}
+                      <span class="badge bg-secondary">Archived</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="text-muted small">* Bundle = líder + ítems hermanos creados desde "Add/Edit Source".</div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- ===== Impact (Potential + Notes side-by-side) ===== -->
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="card h-100 shadow-sm">
+            <div class="card-header bg-light">
+              <h5 class="m-0"><i class="fas fa-bolt me-2"></i>Potential Impact</h5>
+            </div>
+            <div class="card-body d-flex align-items-center">
+              {% if src.potential_impact == 'ESCALATING' %}
+                <span class="me-2"><i class="fas fa-arrow-up text-danger"></i></span>
+                <strong>Escalating</strong>
+              {% elif src.potential_impact == 'MAINTAINING' %}
+                <span class="me-2"><i class="fas fa-arrow-right text-warning"></i></span>
+                <strong>Maintaining</strong>
+              {% elif src.potential_impact == 'DECREASING' %}
+                <span class="me-2"><i class="fas fa-arrow-down text-success"></i></span>
+                <strong>Decreasing</strong>
               {% else %}
-                <span class="text-muted">No content available</span>
+                <em class="text-muted">-</em>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="card h-100 shadow-sm">
+            <div class="card-header bg-light">
+              <h5 class="m-0"><i class="fas fa-sticky-note me-2"></i>Impact Notes</h5>
+            </div>
+            <div class="card-body">
+              {% if src.potential_impact_notes %}
+                <div class="p-2 bg-white rounded">{{ src.potential_impact_notes|linebreaks }}</div>
+              {% else %}
+                <em class="text-muted">No impact notes.</em>
               {% endif %}
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Summary Section -->
-      <div class="summary-container mb-4 p-3 bg-light rounded">
-        <h5 class="mb-3 border-bottom pb-2">Summary</h5>
-        <div class="p-3 bg-white rounded shadow-sm">
-          {{ source.summary|linebreaks }}
+      {% if preview_pdf_url %}
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-light">
+          <h5 class="m-0"><i class="fas fa-eye me-2"></i>PDF Preview</h5>
+        </div>
+        <div class="card-body">
+          <iframe src="{{ preview_pdf_url }}" style="width:100%; height:600px;" frameborder="0"></iframe>
         </div>
       </div>
-
-      <!-- Potential Impact Notes Section -->
-      {% if source.potential_impact_notes %}
-        <div class="notes-container mb-4 p-3 bg-light rounded">
-          <h5 class="mb-3 border-bottom pb-2">Potential Impact Notes</h5>
-          <div class="p-3 bg-white rounded shadow-sm">
-            {{ source.potential_impact_notes|linebreaks }}
-          </div>
-        </div>
       {% endif %}
-
-      <!-- PDF Preview Section -->
-      {% if is_pdf and source.file_upload %}
-        <div class="preview-container mt-4 p-3 bg-light rounded">
-          <h5 class="mb-3 border-bottom pb-2">Preview (PDF)</h5>
-          <div class="p-3 bg-white rounded shadow-sm">
-            <iframe src="{{ source.file_upload.url }}" width="100%" height="600" style="border:1px solid #ddd; border-radius: 4px;"></iframe>
-          </div>
-        </div>
-      {% endif %}
-    </div>
-
-    <!-- Footer -->
-    <div class="card-footer d-flex justify-content-between small text-muted">
-      <div>
-        <strong>Created by:</strong> {{ source.created_by|default:"—" }} |
-        <strong>Created:</strong> {{ source.created_at|date:"Y-m-d H:i" }}
-      </div>
-      <div>
-        <strong>Updated:</strong> {{ source.updated_at|date:"Y-m-d H:i" }}
-      </div>
     </div>
   </div>
 </div>
 
 <style>
-  .detail-card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border: 1px solid rgba(0,0,0,0.05);
-  }
-  
-  .detail-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
-  }
-  
-  .source-details-container,
-  .content-container,
-  .summary-container,
-  .notes-container,
-  .preview-container {
-    background: linear-gradient(to right, #f8f9fa, #f0f4f8) !important;
-  }
+  .scroll-container { overflow-y: auto; overflow-x: hidden; }
+  .list-group-item a { overflow-wrap: anywhere; word-break: break-word; }
+  .detail-card{transition:transform .2s ease,box-shadow .2s ease;border:1px solid rgba(0,0,0,.05)}
+  .detail-card:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(0,0,0,.1)!important}
+  .scroll-container{scroll-behavior:smooth}
+  .scroll-container::-webkit-scrollbar{width:8px}
+  .scroll-container::-webkit-scrollbar-track{background:#f1f1f1;border-radius:4px}
+  .scroll-container::-webkit-scrollbar-thumb{background:#a8a8a8;border-radius:4px}
+  .scroll-container::-webkit-scrollbar-thumb:hover{background:#888}
 </style>
+{% endwith %}
 {% endblock %}

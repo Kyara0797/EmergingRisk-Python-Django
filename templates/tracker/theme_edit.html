@@ -9,7 +9,7 @@
         <i class="fas fa-edit me-2"></i>Editing: {{ object.name }}
       </h4>
       <a href="{% url 'view_theme' pk=object.pk %}" class="btn btn-light btn-sm">
-        <i class="fas fa-arrow-left me-1"></i> Back to Thread
+        <i class="fas fa-arrow-left me-1"></i> Back to Threat
       </a>
     </div>
 
@@ -50,7 +50,7 @@
                     Name
                     <span class="text-muted float-end"><span id="name-char-count">0</span>/30</span>
                   </label>
-                  {{ form.name|attr:"maxlength:30"|attr:"placeholder:Enter Thread name"|add_class:"form-control title-input" }}
+                  {{ form.name|attr:"maxlength:30"|attr:"placeholder:Enter Threat name"|add_class:"form-control title-input" }}
                   {% if form.name.errors %}
                     <div class="invalid-feedback d-block">{{ form.name.errors|join:", " }}</div>
                   {% endif %}

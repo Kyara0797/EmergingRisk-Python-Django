@@ -1,439 +1,475 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 <div class="container mt-4">
   <div class="card">
-    <div class="card-header bg-warning text-dark">
-      <h4 class="m-0"><i class="fas fa-edit me-2"></i>Edit Source</h4>
+    <!-- Header edición -->
+    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">
+        <i class="fas fa-edit me-2"></i>Edit Source
+        <small class="ms-2 fw-normal">for
+          {% if object.event_id %}
+          <a class="text-dark text-decoration-underline" href="{% url 'view_event' event_id=object.event.id %}">
+            {{ object.event.name }}
+          </a>
+          {% else %}
+            <em class="text-muted">No event</em>
+          {% endif %}
+        </small>
+      </h4>
+      <div class="d-flex gap-2">
+        {% if object.event_id %}
+        <a href="{% url 'view_event' event_id=object.event.id %}" class="btn btn-outline-dark btn-sm">
+          <i class="fas fa-arrow-left me-1"></i> Back to Event
+        </a>
+        {% endif %}
+      </div>
     </div>
 
-    <div class="card-body">
-      <form method="post" enctype="multipart/form-data" id="source-form" novalidate>
-        {% csrf_token %}
+    <form method="post" enctype="multipart/form-data" id="source-edit-form">
+      {% csrf_token %}
 
+      <div class="card-body">
         {% if form.non_field_errors %}
           <div class="alert alert-danger">{{ form.non_field_errors }}</div>
         {% endif %}
 
         <div class="row mb-4">
-          <!-- Columna izquierda -->
+          <!-- Left -->
           <div class="col-md-6">
-            <div class="card h-100">
+            <div class="card h-100 shadow-sm">
               <div class="card-header bg-light">
                 <h5 class="m-0"><i class="fas fa-info-circle me-2"></i>Basic Information</h5>
               </div>
               <div class="card-body">
-                <!-- Name -->
-                <div class="mb-3" id="name-wrap">
+                <div class="mb-3">
+                  <label class="form-label">Event</label>
+                  {{ form.event }}
+                  {% if form.event.errors %}<div class="invalid-feedback d-block">{{ form.event.errors|join:", " }}</div>{% endif %}
+                </div>
+
+                <div class="mb-3">
                   <label class="form-label">
                     Name
-                    <span class="text-muted float-end"><span id="name-count">0</span>/30</span>
+                    <span class="text-muted float-end"><span id="nmCnt">0</span>/30</span>
                   </label>
-                  <input type="text" name="name" class="form-control title-input"
-                         value="{{ form.name.value|default_if_none:'' }}"
-                         placeholder="Enter source name" maxlength="30" required>
-                  {% if form.name.errors %}
-                    <div class="invalid-feedback d-block">{{ form.name.errors|join:", " }}</div>
-                  {% endif %}
-                  <div class="form-text text-muted">Maximum 30 characters allowed</div>
+                  {{ form.name }}
+                  {% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors|join:", " }}</div>{% endif %}
                 </div>
 
-                <!-- Source Date (estilo grande como Event) -->
-                <div class="mb-3" id="date-wrap">
-                  <label for="id_source_date" class="form-label">Source Date</label>
-                  <div class="input-group input-group-lg">
-                    <input
-                      type="date"
-                      name="source_date"
-                      id="id_source_date"
-                      class="form-control"
-                      value="{{ form.source_date.value|default_if_none:''|date:'Y-m-d' }}"
-                    >
-                    <span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
-                  </div>
-                  {% if form.source_date.errors %}
-                    <div class="invalid-feedback d-block">{{ form.source_date.errors|join:", " }}</div>
-                  {% endif %}
-                  <div class="form-text text-muted">Date cannot be in the future</div>
-                  <div id="date-error" class="invalid-feedback autohide">Date cannot be in the future</div>
+                <div class="mb-1">
+                  <label class="form-label">Date</label>
+                  {{ form.source_date }}
+                  <div class="form-text">Must be today or in the past.</div>
+                  {% if form.source_date.errors %}<div class="invalid-feedback d-block">{{ form.source_date.errors|join:", " }}</div>{% endif %}
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Columna derecha -->
+          <!-- Right -->
           <div class="col-md-6">
-            <div class="card h-100">
+            <div class="card h-100 shadow-sm">
               <div class="card-header bg-light">
-                <h5 class="m-0"><i class="fas fa-paperclip me-2"></i>Attachments</h5>
+                <h5 class="m-0"><i class="fas fa-paperclip me-2"></i>Links & Files</h5>
               </div>
               <div class="card-body">
-                <!-- Chips multi-selección -->
-                <div class="mb-3">
-                  <div class="chip-toggle-group" id="attach-toggles" role="group" aria-label="Attachment types">
-                    <input type="checkbox" class="btn-check" id="toggle-link" autocomplete="off">
-                    <label class="btn chip" for="toggle-link" title="Add/keep a URL">
-                      <i class="fas fa-link me-1"></i> Link
-                    </label>
-
-                    <input type="checkbox" class="btn-check" id="toggle-file" autocomplete="off">
-                    <label class="btn chip" for="toggle-file" title="Upload files">
-                      <i class="fas fa-file-upload me-1"></i> File
-                    </label>
-                  </div>
-                  <div class="form-text">You can keep, update or add link and/or multiple files.</div>
-                </div>
-
-                <!-- URL -->
-                <div class="mb-3" id="urlField" style="display:none;">
-                  <label for="{{ form.link_or_file.id_for_label }}" class="form-label">URL</label>
-                  {{ form.link_or_file }}
-                  <div class="form-text text-muted">http(s):// or mailto:…</div>
-                  <div id="url-error" class="invalid-feedback autohide">
-                    Please enter a valid URL (http/https) or mailto link.
-                  </div>
-                  {% if form.link_or_file.errors %}
-                    <div class="invalid-feedback d-block">{{ form.link_or_file.errors|join:", " }}</div>
-                  {% endif %}
-                </div>
-
-                <!-- Files -->
-                <div class="mb-3" id="fileField" style="display:none;">
-                  <label class="form-label">Files</label>
-                  <input id="id_file_upload" name="file_upload" type="file" class="form-control"
-                         multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.eml,.msg">
-                  <div class="form-text">Accepted: .pdf, .doc, .docx, .ppt, .pptx, .eml, .msg (max 5MB each)</div>
-                  {% if form.file_upload.errors %}
-                    <div class="invalid-feedback d-block">{{ form.file_upload.errors|join:", " }}</div>
-                  {% endif %}
-
-                  {% if form.instance.file_upload %}
-                    <div class="mt-2 small">
-                      Currently: <a href="{{ form.instance.file_upload.url }}" target="_blank">{{ form.instance.file_upload.name }}</a>
-                      <div class="form-check mt-2">
-                        {{ form.file_upload_clear }}
-                        <label class="form-check-label" for="{{ form.file_upload_clear.id_for_label }}">Clear current file</label>
-                      </div>
-                    </div>
-                  {% endif %}
-
-                  <ul class="list-group mt-2" id="selected-files" style="display:none;"></ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Details -->
-          <div class="col-12">
-            <div class="card">
-              <div class="card-header bg-light d-flex align-items-center">
-                <h5 class="m-0"><i class="fas fa-clipboard-list me-2"></i>Details</h5>
-              </div>
-              <div class="card-body">
-                <!-- Summary -->
-                <div class="mb-3" id="summary-wrap">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <label for="{{ form.summary.id_for_label }}" class="form-label mb-1">Summary</label>
-                    <small class="text-muted"><span id="summary-count">0</span> chars</small>
-                  </div>
-                  <textarea
-                    id="{{ form.summary.id_for_label }}"
-                    name="{{ form.summary.name }}"
-                    class="form-control textarea-summary"
-                    placeholder="Provide a concise, unique summary for this source"
-                  >{{ form.summary.value|default_if_none:'' }}</textarea>
-                  <div class="form-text text-muted">Provide a short, unique summary for this source.</div>
-                  {% if form.summary.errors %}
-                    <div class="invalid-feedback d-block">{{ form.summary.errors|join:", " }}</div>
-                  {% endif %}
-                  <div id="summary-dup-error" class="invalid-feedback autohide">
-                    Summary must be different from existing ones for this event.
-                  </div>
-                </div>
-
-                <div class="row g-3 equal-cards">
-                  <!-- Trend -->
+                <div class="row">
+                  <!-- Links -->
                   <div class="col-md-6">
-                    <div class="card h-100">
-                      <div class="card-header bg-light"><h6 class="m-0">Potential Impact Trend</h6></div>
-                      <div class="card-body">
-                        {% with current=form.potential_impact.value %}
-                        <div class="trend-grid">
-                          <input type="radio" class="btn-check" name="potential_impact" id="pi_up" value="ESCALATING"
-                                 {% if current == "ESCALATING" %}checked{% endif %}>
-                          <label class="trend-card trend-red" for="pi_up">
-                            <i class="fas fa-arrow-up"></i><span>Escalating</span>
-                          </label>
+                    <h6 class="text-muted"><i class="fas fa-link me-2"></i>Link options</h6>
 
-                          <input type="radio" class="btn-check" name="potential_impact" id="pi_flat" value="MAINTAINING"
-                                 {% if current == "MAINTAINING" %}checked{% endif %}>
-                          <label class="trend-card trend-amber" for="pi_flat">
-                            <i class="fas fa-arrow-right"></i><span>Maintaining</span>
-                          </label>
+                    <label class="form-label">Main link (optional)</label>
+                    {{ form.link_or_file }}
+                    <div class="form-text">Use http(s):// or mailto:user@domain.</div>
+                    <div id="url-err" class="invalid-feedback" style="display:none;">
+                      Enter a valid URL (http/https) or mailto:.
+                    </div>
 
-                          <input type="radio" class="btn-check" name="potential_impact" id="pi_down" value="DECREASING"
-                                 {% if current == "DECREASING" %}checked{% endif %}>
-                          <label class="trend-card trend-green" for="pi_down">
-                            <i class="fas fa-arrow-down"></i><span>Decreasing</span>
-                          </label>
+                    <label class="form-label mt-3">Additional links</label>
+                    <div id="extra-links">
+                      {% if existing_links %}
+                        {% for link in existing_links %}
+                        <div class="input-group mb-2">
+                          <input type="text" name="extra_links" class="form-control" value="{{ link }}" />
+                          <button type="button" class="btn btn-outline-danger" title="Remove" onclick="this.parentElement.remove()">
+                            <i class="fas fa-times"></i>
+                          </button>
                         </div>
-                        {% endwith %}
-                        {% if form.potential_impact.errors %}
-                          <div class="invalid-feedback d-block">{{ form.potential_impact.errors|join:", " }}</div>
-                        {% endif %}
+                        {% endfor %}
+                      {% endif %}
+                      <div class="input-group mb-2">
+                        <input type="text" name="extra_links" class="form-control" placeholder="http(s):// or mailto:" />
+                        <button type="button" class="btn btn-outline-secondary" onclick="addLink()">+</button>
                       </div>
                     </div>
+                    <div class="form-text">You can add multiple. Remove a row with the “x”.</div>
                   </div>
 
-                  <!-- Notes -->
+                  <!-- Files -->
                   <div class="col-md-6">
-                    <div class="card h-100">
-                      <div class="card-header bg-light"><h6 class="m-0">Potential Impact Notes</h6></div>
-                      <div class="card-body d-flex">
-                        <textarea
-                          name="{{ form.potential_impact_notes.name }}"
-                          id="{{ form.potential_impact_notes.id_for_label }}"
-                          class="form-control textarea-grow"
-                        >{{ form.potential_impact_notes.value|default_if_none:'' }}</textarea>
+                    <h6 class="text-muted"><i class="fas fa-file-upload me-2"></i>File options</h6>
+
+                    <!-- Main file -->
+                    <label class="form-label">Main file (optional)</label>
+                    <input type="file" name="file_upload" class="form-control" id="id_file_upload"
+                           accept=".pdf,.doc,.docx,.eml,.msg">
+                    {% if form.file_upload.errors %}<div class="invalid-feedback d-block">{{ form.file_upload.errors|join:", " }}</div>{% endif %}
+
+                    {% if object.file_upload %}
+                      <div class="mt-2">
+                        <small class="text-muted d-block">Current file:</small>
+                        <div class="d-flex align-items-center gap-1 text-truncate" style="max-width: 100%;">
+                          <i class="fas fa-paperclip"></i>
+                          <a href="{{ object.file_upload.url }}" target="_blank" class="text-truncate d-inline-block" style="max-width: 320px;">
+                            {{ object.file_upload.name }}
+                          </a>
+                        </div>
                       </div>
-                      {% if form.potential_impact_notes.errors %}
-                        <div class="invalid-feedback d-block px-3 pb-3">{{ form.potential_impact_notes.errors|join:", " }}</div>
-                      {% endif %}
+                      <div class="form-check mt-2">
+                        <input type="checkbox" name="file_upload_clear" id="file_upload_clear" class="form-check-input">
+                        <label class="form-check-label" for="file_upload_clear">Clear current file</label>
+                      </div>
+                    {% endif %}
+
+                    <!-- Additional files (multiple single-file inputs that can be removed) -->
+                    <div class="mb-3 mt-3">
+                      <label class="form-label">Additional files</label>
+
+                      <div id="extra-files-container">
+                        <!-- initial row -->
+                        <div class="input-group mb-2 extra-file-row">
+                          <input type="file"
+                                 name="extra_files"
+                                 class="form-control"
+                                 accept=".pdf,.doc,.docx,.eml,.msg">
+                          <button type="button" class="btn btn-outline-danger" onclick="removeExtraFileRow(this)" title="Remove">
+                            <i class="fas fa-times"></i>
+                          </button>
+                        </div>
+                      </div>
+
+                      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addExtraFileRow()" title="Add file">
+                        <i class="fas fa-plus"></i> Add another file
+                      </button>
+
+                      <div class="form-text">You can upload multiple files (.pdf, .doc, .docx, .eml, .msg).</div>
                     </div>
+
+                    {# === BEGIN: Main file history (read-only) === #}
+                    {% if file_history %}
+                      <div class="mt-4">
+                        <h6 class="text-muted">
+                          <i class="fas fa-clock-rotate-left me-2"></i>Main file history
+                        </h6>
+
+                        <div class="table-responsive">
+                          <table class="table table-sm table-hover align-middle">
+                            <thead>
+                              <tr>
+                                <th style="width:60px;">Ver.</th>
+                                <th>File</th>
+                                <th style="width:170px;">Uploaded</th>
+                                <th style="width:160px;">By</th>
+                                <th style="width:90px;">Size</th>
+                                <th style="width:220px;">Note</th>
+                                <th style="width:110px;"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {% for v in file_history %}
+                                <tr>
+                                  <td class="text-muted">{{ forloop.revcounter }}</td>
+                                  <td class="text-truncate" style="max-width: 360px;">
+                                    <i class="fas fa-paperclip me-1"></i>
+                                    <a href="{{ v.file.url }}" target="_blank" rel="noopener" class="text-truncate d-inline-block" style="max-width: 340px;">
+                                      {{ v.file.name }}
+                                    </a>
+                                  </td>
+                                  <td class="text-nowrap">{{ v.uploaded_at|date:"Y-m-d H:i" }}</td>
+                                  <td class="text-truncate" title="{{ v.uploaded_by }}">{{ v.uploaded_by|default:"—" }}</td>
+                                  <td>{{ v.size_mb|default_if_none:"—"|floatformat:2 }}{% if v.size_mb %} MB{% endif %}</td>
+                                  <td class="text-truncate" title="{{ v.note }}">{{ v.note|default:"—" }}</td>
+                                  <td class="text-end">
+                                    <a class="btn btn-outline-secondary btn-sm" href="{{ v.file.url }}" target="_blank" rel="noopener">
+                                      <i class="fas fa-download me-1"></i>Download
+                                    </a>
+                                  </td>
+                                </tr>
+                              {% endfor %}
+                            </tbody>
+                          </table>
+                          <div class="form-text">Read-only history of previous main files for this Source.</div>
+                        </div>
+                      </div>
+                    {% endif %}
+                    {# === END: Main file history (read-only) === #}
+
                   </div>
                 </div>
+
+                {% if form.link_or_file.errors %}<div class="invalid-feedback d-block">{{ form.link_or_file.errors|join:", " }}</div>{% endif %}
+                {% if form.file_upload.errors %}<div class="invalid-feedback d-block">{{ form.file_upload.errors|join:", " }}</div>{% endif %}
               </div>
             </div>
           </div>
         </div>
 
-        {{ form.event.as_hidden }}
-        {{ form.source_type }}
-        <input type="hidden" name="change_impact" value="N/A">
-
-        <div class="d-flex justify-content-between mt-4">
-          <a href="{% url 'view_event' event_id=object.event.id %}" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-left me-1"></i> Cancel
-          </a>
-          <button type="submit" class="btn btn-primary" id="submit-btn">
-            <i class="fas fa-save me-1"></i> Update Source
-          </button>
+        <!-- Summary -->
+        <div class="card mb-4 shadow-sm">
+          <div class="card-header bg-light">
+            <h5 class="m-0"><i class="fas fa-align-left me-2"></i>Summary</h5>
+          </div>
+          <div class="card-body">
+            {{ form.summary }}
+            <div class="invalid-feedback d-block" id="sum-dup" style="display:none;">
+              Summary must be different from existing ones for this event.
+            </div>
+            {% if form.summary.errors %}<div class="invalid-feedback d-block">{{ form.summary.errors|join:", " }}</div>{% endif %}
+          </div>
         </div>
-      </form>
-    </div>
+
+        <!-- Potential Impact + Notes -->
+        <div class="row mb-2">
+          <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-light">
+                <h5 class="m-0"><i class="fas fa-bolt me-2"></i>Potential Impact</h5>
+              </div>
+              <div class="card-body">
+                <div class="btn-group mb-2" role="group" aria-label="Potential Impact">
+                  <input type="radio" class="btn-check" name="pi" id="piEsc" autocomplete="off"
+                         {% if form.instance.potential_impact == 'ESCALATING' %}checked{% endif %}>
+                  <label class="btn btn-outline-danger" for="piEsc"><i class="fas fa-arrow-up me-1"></i> Escalating</label>
+
+                  <input type="radio" class="btn-check" name="pi" id="piMain" autocomplete="off"
+                         {% if form.instance.potential_impact == 'MAINTAINING' %}checked{% endif %}>
+                  <label class="btn btn-outline-warning" for="piMain"><i class="fas fa-arrow-right me-1"></i> Maintaining</label>
+
+                  <input type="radio" class="btn-check" name="pi" id="piDec" autocomplete="off"
+                         {% if form.instance.potential_impact == 'DECREASING' %}checked{% endif %}>
+                  <label class="btn btn-outline-success" for="piDec"><i class="fas fa-arrow-down me-1"></i> Decreasing</label>
+                </div>
+                <div class="d-none">{{ form.potential_impact }}</div>
+                {% if form.potential_impact.errors %}<div class="invalid-feedback d-block">{{ form.potential_impact.errors|join:", " }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-light">
+                <h5 class="m-0"><i class="fas fa-sticky-note me-2"></i>Impact Notes</h5>
+              </div>
+              <div class="card-body">
+                {{ form.potential_impact_notes }}
+                {% if form.potential_impact_notes.errors %}<div class="invalid-feedback d-block">{{ form.potential_impact_notes.errors|join:", " }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {{ form.source_type }} <!-- hidden -->
+
+        <!-- EXISTING BUNDLE ITEMS -->
+        {% if bundle_items %}
+        <div class="card mb-4 shadow-sm">
+          <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="m-0"><i class="fas fa-layer-group me-2"></i>Existing items in this bundle</h5>
+            <span class="badge bg-secondary">{{ bundle_items|length }}</span>
+          </div>
+
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th style="width:40px;"></th>
+                    <th>Type</th>
+                    <th>Link / File</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                {% for s in bundle_items %}
+                  <tr class="{% if not s.is_active %}table-light text-muted{% endif %}">
+                    <td>
+                      {% if s.id != object.id %}
+                        <input type="checkbox" name="remove_item_ids" value="{{ s.id }}" title="Archive this item">
+                      {% endif %}
+                    </td>
+                    <td class="text-nowrap">
+                      {% if s.source_type == 'MIXED' %}
+                        <span class="badge bg-dark">Mixed</span>
+                      {% elif s.source_type == 'FILE' %}
+                        <span class="badge bg-secondary">File</span>
+                      {% else %}
+                        <span class="badge bg-info">Link</span>
+                      {% endif %}
+                    </td>
+                    <td style="max-width:480px;">
+                      {% if s.file_upload %}
+                        <a href="{{ s.file_upload.url }}" target="_blank" rel="noopener"
+                           class="text-truncate d-inline-block" style="max-width: 440px; overflow-wrap:anywhere;">
+                           <i class="fas fa-paperclip me-1"></i>{{ s.file_upload.name }}
+                        </a>
+                      {% elif s.link_or_file %}
+                        <a href="{{ s.link_or_file }}" target="_blank" rel="noopener"
+                           class="text-truncate d-inline-block" style="max-width: 440px; overflow-wrap:anywhere;">
+                           <i class="fas fa-external-link-alt me-1"></i>{{ s.link_or_file }}
+                        </a>
+                      {% else %}
+                        <em class="text-muted">—</em>
+                      {% endif %}
+                    </td>
+                    <td class="text-nowrap">{{ s.source_date|date:"Y-m-d" }}</td>
+                    <td>
+                      {% if s.is_active %}
+                        <span class="badge bg-success">Active</span>
+                      {% else %}
+                        <span class="badge bg-secondary">Archived</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="form-text">
+              Check items to <strong>archive</strong> when saving.
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+
+      <div class="card-footer d-flex justify-content-between">
+        <a href="{% url 'source_detail' pk=object.id %}" class="btn btn-outline-secondary">
+          <i class="fas fa-times me-1"></i> Cancel
+        </a>
+        <button class="btn btn-warning">
+          <i class="fas fa-save me-1"></i> Update
+        </button>
+      </div>
+    </form>
   </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  /* ===== Name counter ===== */
-  const nameInput = document.querySelector('#name-wrap input[name="name"]');
-  const nameCount = document.getElementById('name-count');
-  function refreshNameCount(){
-    if (!nameInput || !nameCount) return;
-    const n = nameInput.value.length;
-    nameCount.textContent = n;
-    nameCount.classList.remove('text-muted','text-warning','text-danger');
-    if (n >= 30) nameCount.classList.add('text-danger');
-    else if (n > 24) nameCount.classList.add('text-warning');
-    else nameCount.classList.add('text-muted');
-  }
-  refreshNameCount();
-  nameInput?.addEventListener('input', refreshNameCount);
-
-  /* ===== Date: max=today + validate ===== */
-  const dateInput = document.getElementById('id_source_date');
-  const dateError = document.getElementById('date-error');
-  if (dateInput){
-    const today = new Date(); today.setHours(0,0,0,0);
-    const pad = n => String(n).padStart(2,'0');
-    const iso = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
-    dateInput.setAttribute('max', iso);
-  }
-  function isPastOrToday(value){
-    if (!value) return false;
-    const sel = new Date(value);
-    const today = new Date(); today.setHours(0,0,0,0);
-    return sel <= today;
-  }
-
-  /* ===== Toggles Attachments ===== */
-  const toggleLink = document.getElementById('toggle-link');
-  const toggleFile = document.getElementById('toggle-file');
-  const urlField   = document.getElementById('urlField');
-  const fileField  = document.getElementById('fileField');
-  const urlInput   = document.getElementById('id_link_or_file');
-
-  function syncAttachUI(){
-    urlField.style.display  = toggleLink.checked ? '' : 'none';
-    fileField.style.display = toggleFile.checked ? '' : 'none';
-  }
-  if (urlInput && urlInput.value) toggleLink.checked = true;
-  const hasExistingFile = '{{ form.instance.file_upload|yesno:"yes,no" }}' === 'yes';
-  if (hasExistingFile) toggleFile.checked = true;
-  syncAttachUI();
-
-  toggleLink.addEventListener('change', syncAttachUI);
-  toggleFile.addEventListener('change', syncAttachUI);
-
-  /* ===== URL validator ===== */
-  const urlError = document.getElementById('url-error');
-  function isValidUrl(value){
-    if (!value) return false;
-    const v = value.trim();
-    if (v.startsWith('mailto:')) return v.length > 7 && v.includes('@');
-    try { const u = new URL(v); return u.protocol === 'http:' || u.protocol === 'https:'; }
-    catch(e){ return false; }
-  }
-
-  /* ===== Múltiples archivos NUEVOS + listado/remover ===== */
-  const fileInput = document.getElementById('id_file_upload');
-  const fileListEl = document.getElementById('selected-files');
-  let fileStore = []; // [{ file, key }]
-  const keyOf = f => `${f.name}_${f.lastModified}_${f.size}`;
-
-  function syncInputFromStore(){
-    const dt = new DataTransfer();
-    fileStore.forEach(x => dt.items.add(x.file));
-    fileInput.files = dt.files;
-  }
-
-  function renderFileList(){
-    fileListEl.innerHTML = '';
-    if (fileStore.length === 0){
-      fileListEl.style.display = 'none';
-      return;
-    }
-    fileListEl.style.display = '';
-    fileStore.forEach(({file, key}) => {
-      const li = document.createElement('li');
-      li.className = 'list-group-item d-flex justify-content-between align-items-center';
-      li.dataset.key = key;
-      li.innerHTML = `<div><i class="fas fa-file me-2"></i>${file.name} <span class="text-muted small">(${Math.ceil(file.size/1024)} KB)</span></div>`;
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn btn-sm btn-outline-danger';
-      btn.innerHTML = '<i class="fas fa-times"></i>';
-      btn.addEventListener('click', () => {
-        fileStore = fileStore.filter(x => x.key !== key);
-        syncInputFromStore();
-        renderFileList();
-      });
-      li.appendChild(btn);
-      fileListEl.appendChild(li);
-    });
-  }
-
-  fileInput?.addEventListener('change', function(e){
-    Array.from(e.target.files).forEach(f => {
-      const k = keyOf(f);
-      if (!fileStore.find(x => x.key === k)){
-        fileStore.push({ file: f, key: k });
-      }
-    });
-    syncInputFromStore();
-    renderFileList();
-    if (fileStore.length > 0){ toggleFile.checked = true; syncAttachUI(); }
-    e.target.value = '';
-  });
-
-  /* ===== Summary: contador + auto-grow + unicidad al guardar ===== */
-  const summaryEl = document.getElementById('id_summary');
-  const summaryCount = document.getElementById('summary-count');
-  const summaryDupError = document.getElementById('summary-dup-error');
-
-  function updateSummaryCount(){ if(summaryEl && summaryCount){ summaryCount.textContent = summaryEl.value.length; } }
-  function autosize(el){ el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; }
-
-  summaryEl && (['input','change'].forEach(evt => summaryEl.addEventListener(evt, () => { updateSummaryCount(); autosize(summaryEl); })));
-  updateSummaryCount(); if(summaryEl){ autosize(summaryEl); }
-
-  let existingSummaries = [];
-  try { existingSummaries = JSON.parse('{{ existing_summaries_json|default:"[]"|escapejs }}'); }
-  catch(e){ existingSummaries = []; }
-  function isSummaryUnique(value){
-    const v = String(value||'').trim().toLowerCase().replace(/\s+/g,' ');
-    if (!v) return true;
-    return !existingSummaries.some(s => String(s||'').trim().toLowerCase().replace(/\s+/g,' ') === v);
-  }
-
-  /* ===== Submit guard ===== */
-  document.getElementById('submit-btn').addEventListener('click', function(e){
-    let ok = true;
-
-    if (!nameInput.value.trim()){ ok=false; nameInput.classList.add('is-invalid'); }
-    else { nameInput.classList.remove('is-invalid'); }
-
-    if (!isPastOrToday(dateInput?.value)){
-      ok=false; dateError?.classList.remove('autohide'); dateInput?.classList.add('is-invalid');
-    } else {
-      dateError?.classList.add('autohide'); dateInput?.classList.remove('is-invalid');
-    }
-
-    if (toggleLink.checked){
-      if (!isValidUrl(urlInput?.value)){
-        ok=false; urlError?.classList.remove('autohide'); urlInput?.classList.add('is-invalid');
-      } else {
-        urlError?.classList.add('autohide'); urlInput?.classList.remove('is-invalid');
-      }
-    } else { urlError?.classList.add('autohide'); urlInput?.classList.remove('is-invalid'); }
-
-    if (!isSummaryUnique(summaryEl?.value)){
-      ok=false; summaryDupError?.classList.remove('autohide'); summaryEl?.classList.add('is-invalid');
-    } else { summaryDupError?.classList.add('autohide'); summaryEl?.classList.remove('is-invalid'); }
-
-    if (!ok){
-      e.preventDefault();
-      (document.querySelector('.is-invalid') || document.querySelector('.invalid-feedback:not(.autohide)'))
-        ?.scrollIntoView({behavior:'smooth', block:'center'});
-    }
-  });
-});
-</script>
 
 <style>
-  .form-control, .form-select{min-height:38px;background:#fff}
-  .title-input{font-size:1.1rem;font-weight:500}
-  .card{box-shadow:0 0.125rem 0.25rem rgba(0,0,0,.075);margin-bottom:1rem}
-  .card-header{padding:.75rem 1rem}
-  .form-label{font-weight:500;margin-bottom:4px}
-  .is-invalid{border:1px solid #dc3545!important}
-  .invalid-feedback.autohide{display:none !important;}
-  .textarea-grow{min-height:140px;width:100%}
-  .textarea-summary{min-height:110px; width:100%; resize:vertical; overflow:hidden;}
-
-  .chip-toggle-group .chip{
-    border:1px solid #ced4da;background:#fff;margin-right:.5rem;padding:.4rem .75rem;border-radius:9999px;
-    display:inline-flex;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,.04);
-  }
-  .chip-toggle-group .btn-check:checked + .chip{
-    border-color:#0d6efd;box-shadow:0 0 0 .15rem rgba(13,110,253,.25);
-  }
-
-  .trend-grid{
-    display:grid; gap:.6rem;
-    grid-template-columns: repeat(3, minmax(0,1fr));
-  }
-  @media (max-width: 576px){
-    .trend-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
-  }
-  .trend-card{
-    display:flex; align-items:center; justify-content:center; gap:.55rem;
-    padding:.65rem .85rem; border:2px solid #dee2e6; border-radius:.9rem; background:#fff;
-    cursor:pointer; transition:.15s; height:100%; font-weight:600;
-  }
-  .trend-card i{font-size:1rem;}
-  .trend-card:hover{transform:translateY(-1px); box-shadow:0 0.25rem 0.5rem rgba(0,0,0,.06)}
-  .trend-red{border-color:#f8d7da; color:#b02a37}
-  .trend-amber{border-color:#ffe8a1; color:#997404}
-  .trend-green{border-color:#cfe9cf; color:#0f5132}
-  .btn-check:checked + .trend-card{border-color:#0d6efd; box-shadow:0 0 0 .15rem rgba(13,110,253,.25)}
-  .equal-cards > [class*="col-"] > .card{height:100%}
-
-  /* Alto consistente del input-group grande */
-  .input-group-lg > .form-control,
-  .input-group-lg > .input-group-text { padding:.8rem .9rem; }
+  .form-text { font-size: .85rem; }
 </style>
+
+<script>
+  const existingSummaries = {{ existing_summaries_json|safe }};
+
+  (function(){
+    const i=document.querySelector('input[name="name"]'), c=document.getElementById('nmCnt');
+    function u(){ c.textContent=(i?.value||'').length; }
+    i&&i.addEventListener('input',u); u();
+  })();
+
+  (function(){
+    const d=document.getElementById('id_source_date'); if(!d) return;
+    const t=new Date(), p=n=>String(n).padStart(2,'0');
+    d.max = `${t.getFullYear()}-${p(t.getMonth()+1)}-${p(t.getDate())}`;
+  })();
+
+  (function(){
+    const sel=document.getElementById('id_potential_impact')||document.querySelector('select[name="potential_impact"]');
+    const map={piEsc:'ESCALATING',piMain:'MAINTAINING',piDec:'DECREASING'};
+    function pick(v){
+      if(!sel) return;
+      sel.value=v||'';
+      document.getElementById('piEsc').checked=(v==='ESCALATING');
+      document.getElementById('piMain').checked=(v==='MAINTAINING');
+      document.getElementById('piDec').checked=(v==='DECREASING');
+    }
+    pick(sel?.value);
+    ['piEsc','piMain','piDec'].forEach(id=>{
+      const el=document.getElementById(id); if(!el) return;
+      el.addEventListener('change',()=>pick(map[id]));
+    });
+  })();
+
+  // dynamic links
+  function addLink(){
+    const cont=document.getElementById('extra-links');
+    const row=document.createElement('div'); row.className='input-group mb-2';
+    row.innerHTML=`
+      <input type="text" name="extra_links" class="form-control" placeholder="http(s):// or mailto:" />
+      <button type="button" class="btn btn-outline-danger" title="Remove" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+    `;
+    cont.appendChild(row);
+  }
+
+  // Additional files: multiple rows you can remove
+  function addExtraFileRow(){
+    const wrap = document.getElementById('extra-files-container');
+    const row = document.createElement('div');
+    row.className = 'input-group mb-2 extra-file-row';
+    row.innerHTML = `
+      <input type="file" name="extra_files" class="form-control" accept=".pdf,.doc,.docx,.eml,.msg">
+      <button type="button" class="btn btn-outline-danger" onclick="removeExtraFileRow(this)" title="Remove">
+        <i class="fas fa-times"></i>
+      </button>
+    `;
+    wrap.appendChild(row);
+  }
+  function removeExtraFileRow(btn){
+    const row = btn.closest('.extra-file-row');
+    if(!row) return;
+    const wrap = document.getElementById('extra-files-container');
+    if(wrap.querySelectorAll('.extra-file-row').length === 1){
+      const input = row.querySelector('input[type="file"]');
+      if(input) input.value = '';
+      return;
+    }
+    row.remove();
+  }
+
+  // URL validation (main + additional links)
+  (function(){
+    function isValidUrl(v){
+      if(!v) return true; // empty allowed
+      v=v.trim();
+      if(v.startsWith('mailto:')) return v.length>7 && v.includes('@');
+      try{ const u=new URL(v); return ['http:','https:'].includes(u.protocol); }catch{ return false; }
+    }
+    const form=document.getElementById('source-edit-form');
+    form.addEventListener('submit', (e)=>{
+      let ok=true;
+      const main=document.getElementById('id_link_or_file');
+      const urlErr=document.getElementById('url-err');
+      if(main && main.value && !isValidUrl(main.value)){
+        ok=false; urlErr.style.display='block'; main.classList.add('is-invalid');
+      }else{
+        urlErr.style.display='none'; main?.classList.remove('is-invalid');
+      }
+      document.querySelectorAll('input[name="extra_links"]').forEach(inp=>{
+        if(inp.value && !isValidUrl(inp.value)){ ok=false; inp.classList.add('is-invalid'); }
+        else { inp.classList.remove('is-invalid'); }
+      });
+      if(!ok){
+        e.preventDefault();
+        (document.querySelector('.is-invalid')||urlErr)?.scrollIntoView({behavior:'smooth', block:'center'});
+      }
+    });
+  })();
+
+  // soft duplicate-summary detection
+  (function(){
+    const el=document.getElementById('id_summary');
+    const area=document.getElementById('sum-dup');
+    function norm(s){ return String(s||'').trim().toLowerCase().replace(/\s+/g,' '); }
+    el && el.addEventListener('blur', ()=>{
+      const v=norm(el.value);
+      if(v && (existingSummaries||[]).map(norm).includes(v)) area.style.display='block';
+      else area.style.display='none';
+    });
+  })();
+</script>
 {% endblock %}

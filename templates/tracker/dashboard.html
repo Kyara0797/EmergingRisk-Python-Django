@@ -35,7 +35,7 @@
                   <h6 class="card-title mb-3 fw-bold">{{ category.name }}</h6>
                   <a href="{% url 'theme_list_by_category' category_id=category.id %}"
                      class="btn btn-sm btn-outline-primary align-self-center mt-auto py-1 px-3">
-                    View Thread
+                    View Threat
                   </a>
                 </div>
               </div>
@@ -52,7 +52,7 @@
     <div class="col-12">
       <div class="card">
         <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-          <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Recent Thread</h5>
+          <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Recent Threat</h5>
           <a href="{% url 'theme_list_all' %}" class="btn btn-sm btn-light">View All</a>
         </div>
         <div class="card-body">
@@ -248,7 +248,7 @@
     cursor: pointer;
   }
   
-  /* FIXED: Eliminar espacio blanco en tabla de Threads */
+  /* FIXED: Eliminar espacio blanco en tabla de Threat */
   .col-name { width: 50%; }
   .col-category { width: 30%; }
   .col-risk { width: 20%; }

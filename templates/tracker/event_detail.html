@@ -24,12 +24,12 @@
 
         <!-- Fila 1 -->
         <div class="row">
-          <!-- Thread -->
+          <!-- Threat -->
           <div class="col-md-3 mb-3">
             <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
               <div class="d-flex align-items-center mb-2">
                 <i class="fas fa-palette text-primary me-2"></i>
-                <strong class="text-muted">Thread</strong>
+                <strong class="text-muted">Threat</strong>
               </div>
               <p class="mb-0 fw-bold">
                 <a href="{% url 'view_theme' pk=event.theme.id %}">{{ event.theme.name }}</a>
@@ -111,14 +111,14 @@
             </div>
           </div>
 
-          <!-- Source Count -->
+          <!-- Source Count (bundles) -->
           <div class="col-md-3 mb-3">
             <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
               <div class="d-flex align-items-center mb-2">
                 <i class="fas fa-file-alt text-info me-2"></i>
                 <strong class="text-muted">Sources</strong>
               </div>
-              <p class="mb-0 fw-bold">{{ sources.count }} {{ sources.count|pluralize:"source,sources" }}</p>
+              <p class="mb-0 fw-bold">{{ bundle_count }} {{ bundle_count|pluralize:"source,sources" }}</p>
             </div>
           </div>
         </div>
@@ -199,17 +199,16 @@
         </div>
       </div>
 
-      <!-- Sources + filter -->
+      <!-- Sources (agrupados por bundle) -->
       <div class="mt-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5>Sources ({{ sources.count }})</h5>
+          <h5 class="mb-0">Sources <span class="text-muted">({{ bundle_count }})</span></h5>
 
           <form method="get" class="d-flex align-items-center gap-2">
             <select name="source_type" class="form-select form-select-sm" onchange="this.form.submit()">
-              <option value="">All Types</option>
-              {% for type_id, type_name in source_types %}
-                <option value="{{ type_id }}" {% if selected_source_type == type_id %}selected{% endif %}>
-                  {{ type_name }}
+              {% for val,label in bundle_type_choices %}
+                <option value="{{ val }}" {% if selected_source_type == val %}selected{% endif %}>
+                  {{ label }}
                 </option>
               {% endfor %}
             </select>
@@ -228,7 +227,7 @@
           </form>
         </div>
 
-        {% if sources %}
+        {% if source_bundles %}
           <div class="table-responsive">
             <table class="table table-hover align-middle" id="sourcesTable">
               <thead>
@@ -237,22 +236,34 @@
                   <th>Type</th>
                   <th>Date</th>
                   <th>Potential Impact</th>
-                  <th>Content</th>
+                  <th>Items</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-              {% for source in sources %}
-                <tr data-href="{% url 'source_detail' pk=source.id %}" {% if not source.is_active %}class="table-light text-muted"{% endif %}>
+              {% for b in source_bundles %}
+                {% with source=b.leader %}
+                <tr data-href="{% url 'source_detail' pk=source.id %}" {% if not b.any_active %}class="table-light text-muted"{% endif %}>
                   <td>
                     <a href="{% url 'source_detail' pk=source.id %}">{{ source.name }}</a>
                     {% if source.potential_impact_notes %}
                       <span class="ms-1" title="{{ source.potential_impact_notes|escape }}"><i class="fas fa-info-circle"></i></span>
                     {% endif %}
                   </td>
-                  <td><span class="badge bg-info">{{ source.get_source_type_display }}</span></td>
+
+                  <td>
+                    {% if b.display_type == 'MIXED' %}
+                      <span class="badge bg-dark">Mixed</span>
+                    {% elif b.display_type == 'FILE' %}
+                      <span class="badge bg-secondary">File</span>
+                    {% else %}
+                      <span class="badge bg-info">Link</span>
+                    {% endif %}
+                  </td>
+
                   <td>{{ source.source_date|date:"Y-m-d" }}</td>
+
                   <td>
                     {% if source.potential_impact == 'ESCALATING' %}
                       <span title="Escalating"><i class="fas fa-arrow-up text-danger"></i> Escalating</span>
@@ -264,42 +275,49 @@
                       <em>-</em>
                     {% endif %}
                   </td>
+
                   <td>
-                    {% if source.link_or_file %}
-                      <a href="{{ source.link_or_file }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-external-link-alt"></i> Visit URL
-                      </a>
-                    {% elif source.file_upload %}
-                      <a href="{{ source.file_upload.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                        <i class="fas fa-download"></i> Download File
-                      </a>
-                    {% else %}
-                      <span class="text-muted">—</span>
+                    {% if b.links %}
+                      <span class="badge bg-primary me-1"><i class="fas fa-link me-1"></i>{{ b.links }}</span>
+                    {% endif %}
+                    {% if b.files %}
+                      <span class="badge bg-secondary"><i class="fas fa-paperclip me-1"></i>{{ b.files }}</span>
                     {% endif %}
                   </td>
+
                   <td>
-                    {% if source.is_active %}
+                    {% if b.any_active %}
                       <span class="badge bg-success">Active</span>
                     {% else %}
                       <span class="badge bg-secondary">Archived</span>
                     {% endif %}
                   </td>
+
                   <td class="text-nowrap">
-                    <a href="{% url 'source_detail' pk=source.id %}" class="btn btn-sm btn-outline-primary" title="View"><i class="fas fa-eye"></i></a>
-                    <a href="{% url 'edit_source' pk=source.id %}" class="btn btn-sm btn-outline-warning" title="Edit"><i class="fas fa-edit"></i></a>
-                    {% if source.is_active %}
-                      <a href="{% url 'toggle_source_active' pk=source.id %}" class="btn btn-sm btn-outline-danger" title="Archive"
-                         onclick="return confirm('Archive this source? You can show it again using \"Show archived\".');">
+                    <a href="{% url 'source_detail' pk=source.id %}" class="btn btn-sm btn-outline-primary" title="View">
+                      <i class="fas fa-eye"></i>
+                    </a>
+                    <a href="{% url 'edit_source' pk=source.id %}" class="btn btn-sm btn-outline-warning" title="Edit">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                    {% if b.any_active %}
+                      <a href="{% url 'toggle_source_active' pk=source.id %}"
+                         class="btn btn-sm btn-outline-danger"
+                         title="Archive"
+                         onclick="return confirm('Archive this source bundle? You can show it again using \"Show archived\".');">
                         <i class="fas fa-archive"></i>
                       </a>
                     {% else %}
-                      <a href="{% url 'toggle_source_active' pk=source.id %}" class="btn btn-sm btn-outline-success" title="Restore"
-                         onclick="return confirm('Restore this source?');">
+                      <a href="{% url 'toggle_source_active' pk=source.id %}"
+                         class="btn btn-sm btn-outline-success"
+                         title="Restore"
+                         onclick="return confirm('Restore this source bundle?');">
                         <i class="fas fa-rotate-left"></i>
                       </a>
                     {% endif %}
                   </td>
                 </tr>
+                {% endwith %}
               {% endfor %}
               </tbody>
             </table>

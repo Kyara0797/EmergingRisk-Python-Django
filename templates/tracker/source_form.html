@@ -11,9 +11,11 @@
     {% endif %}
 
     <div class="mb-3">
-      <label class="form-label">Name <span class="text-muted float-end"><span id="cnt">0</span>/30</span></label>
-      <input type="text" name="name" class="form-control" maxlength="30"
-             value="{{ form.name.value|default_if_none:'' }}" required>
+      <label class="form-label">
+        Name
+        <span class="text-muted float-end"><span id="cnt">0</span>/30</span>
+      </label>
+      {{ form.name }}
     </div>
 
     <div class="mb-3">
@@ -31,6 +33,7 @@
       </div>
     </div>
 
+    <!-- URL -->
     <div class="mb-3" id="urlField" style="display:none;">
       <label class="form-label">URL</label>
       {{ form.link_or_file }}
@@ -39,11 +42,19 @@
       </div>
     </div>
 
+    <!-- MAIN FILE (un solo archivo) -->
     <div class="mb-3" id="fileField" style="display:none;">
-      <label class="form-label">Files</label>
-      <input id="id_file_upload" name="file_upload" type="file" class="form-control"
-             multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.eml,.msg">
+      <label class="form-label">Main file (optional)</label>
+      {{ form.file_upload }} {# NO multiple aquí #}
+    </div>
+
+    <!-- ADDITIONAL FILES (varios) -->
+    <div class="mb-3">
+      <label class="form-label">Additional files</label>
+      <input id="id_extra_files" name="extra_files" type="file" class="form-control" multiple
+             accept=".pdf,.doc,.docx,.eml,.msg">
       <ul class="list-group mt-2" id="file-list" style="display:none;"></ul>
+      <div class="form-text">Puedes subir múltiples archivos (.pdf, .doc, .docx, .eml, .msg).</div>
     </div>
 
     <div class="mb-3">
@@ -64,7 +75,7 @@
       {{ form.potential_impact_notes }}
     </div>
 
-    {{ form.event }} {{ form.source_type }}  {# source_type va oculto #}
+    {{ form.event }} {{ form.source_type }}  {# source_type oculto #}
 
     <button type="submit" class="btn btn-primary" id="btn-save">Save</button>
   </form>
@@ -74,10 +85,11 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+  // contador nombre
   const name = document.querySelector('input[name="name"]');
   const cnt = document.getElementById('cnt');
-  function upd(){ cnt.textContent = (name.value||'').length; }
-  name.addEventListener('input', upd); upd();
+  function upd(){ cnt.textContent = (name?.value||'').length; }
+  name?.addEventListener('input', upd); upd();
 
   // date max = hoy
   const d = document.getElementById('id_source_date');
@@ -97,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (urlInput?.value) tLink.checked = true; sync();
   tLink.addEventListener('change', sync); tFile.addEventListener('change', sync);
 
-  // url valida solo al guardar
+  // Validación URL (al guardar)
   const urlErr = document.getElementById('url-err');
   function isValidUrl(v){
     if(!v) return false; v=v.trim();
@@ -105,33 +117,23 @@ document.addEventListener('DOMContentLoaded', () => {
     try { const u=new URL(v); return ['http:','https:'].includes(u.protocol); } catch { return false; }
   }
 
-  // múltiples archivos con lista/remoción
-  const fi = document.getElementById('id_file_upload');
+  // PREVISUALIZAR nombres de extra_files (no se toca input.files)
+  const fi = document.getElementById('id_extra_files');
   const ul = document.getElementById('file-list');
-  let store=[];
-  const key=f=>`${f.name}_${f.lastModified}_${f.size}`;
-  function syncInput(){
-    const dt = new DataTransfer();
-    store.forEach(x=>dt.items.add(x.file));
-    fi.files = dt.files;
-  }
-  function render(){
-    ul.innerHTML=''; if(!store.length){ul.style.display='none';return;}
-    ul.style.display=''; store.forEach(({file,k})=>{
-      const li=document.createElement('li');
-      li.className='list-group-item d-flex justify-content-between align-items-center';
-      li.innerHTML = `<span><i class="fas fa-file me-2"></i>${file.name}</span>`;
-      const b=document.createElement('button'); b.type='button'; b.className='btn btn-sm btn-outline-danger';
-      b.innerHTML='<i class="fas fa-times"></i>'; b.onclick=()=>{store=store.filter(x=>x.k!==k); syncInput(); render();};
-      li.appendChild(b); ul.appendChild(li);
-    });
-  }
   fi?.addEventListener('change', e=>{
-    Array.from(e.target.files||[]).forEach(f=>{ const k=key(f); if(!store.find(x=>x.k===k)) store.push({file:f,k}); });
-    syncInput(); render(); if(store.length){ tFile.checked=true; sync(); } e.target.value='';
+    ul.innerHTML='';
+    const files=Array.from(e.target.files||[]);
+    if(!files.length){ ul.style.display='none'; return; }
+    ul.style.display='';
+    files.forEach(f=>{
+      const li=document.createElement('li');
+      li.className='list-group-item';
+      li.textContent=f.name;
+      ul.appendChild(li);
+    });
   });
 
-  // summary único (sólo al guardar)
+  // Summary único (al guardar)
   let existing=[]; try { existing = JSON.parse('{{ existing_summaries_json|default:"[]"|escapejs }}'); } catch {}
   function norm(s){ return String(s||'').trim().toLowerCase().replace(/\s+/g,' '); }
   const sumEl = document.getElementById('id_summary');

@@ -1,36 +1,53 @@
-{# templates/tracker/source_confirm_delete.html #}
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 <div class="container mt-4">
-  <div class="card border-danger">
-    <div class="card-header bg-danger text-white">
-      <i class="fas fa-exclamation-triangle me-2"></i> Delete Source
+  <div class="card shadow-sm">
+    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+      <h4 class="mb-0"><i class="fas fa-trash-alt me-2"></i>Archive Source</h4>
+      <a href="{% url 'source_detail' pk=object.id %}" class="btn btn-outline-light btn-sm">
+        <i class="fas fa-arrow-left me-1"></i> Back
+      </a>
     </div>
     <div class="card-body">
-      <p>
-        Are you sure you want to delete the source
-        <strong>{{ object.name }}</strong>
-        from event <strong>{{ object.event.name }}</strong>?
+      <p class="lead mb-3">
+        You are about to <strong>archive</strong> this source (soft-delete). It won’t be removed from the database and can be restored later.
       </p>
 
-      {% if object.link_or_file %}
-        <p><strong>URL:</strong> <a href="{{ object.link_or_file }}" target="_blank">{{ object.link_or_file }}</a></p>
-      {% elif object.file_upload %}
-        <p><strong>File:</strong> <a href="{{ object.file_upload.url }}" target="_blank">{{ object.file_upload.name }}</a></p>
-      {% endif %}
+      <ul class="list-group mb-3">
+        <li class="list-group-item"><strong>Name:</strong> {{ object.name }}</li>
+        <li class="list-group-item"><strong>Event:</strong> {{ object.event.name }}</li>
+        <li class="list-group-item"><strong>Date:</strong> {{ object.source_date|date:"Y-m-d" }}</li>
+        <li class="list-group-item">
+          <strong>Type:</strong>
+          {% if object.source_type == 'MIXED' %}Mixed{% elif object.source_type == 'FILE' %}File{% elif object.source_type == 'LINK' %}Link{% else %}-{% endif %}
+        </li>
+        <li class="list-group-item">
+          <strong>Current status:</strong>
+          {% if object.is_active %}
+            <span class="badge bg-success">Active</span>
+          {% else %}
+            <span class="badge bg-secondary">Archived</span>
+          {% endif %}
+        </li>
+      </ul>
 
       <form method="post">
         {% csrf_token %}
-        <div class="d-flex gap-2">
-          <a href="{% url 'view_event' event_id=object.event.id %}" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-left me-1"></i> Cancel
+        <div class="d-flex justify-content-between">
+          <a href="{% url 'source_detail' pk=object.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-times me-1"></i> Cancel
           </a>
           <button type="submit" class="btn btn-danger">
-            <i class="fas fa-trash-alt me-1"></i> Confirm Delete
+            <i class="fas fa-archive me-1"></i> Archive
           </button>
         </div>
       </form>
+
+      <div class="form-text mt-3">
+        If you really need a permanent delete, implement hard-delete in the view or use the archive toggle to keep history intact.
+      </div>
     </div>
   </div>
 </div>

@@ -1,384 +1,355 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
-<div class="container mt-4">
+<div id="add-source-screen" class="container mt-4">
   <div class="card">
     <div class="card-header bg-primary text-white">
-      <h4 class="m-0"><i class="fas fa-plus-circle me-2"></i>Add Source to {{ event.name }}</h4>
+      <h4 class="m-0">
+        <i class="fas fa-plus-circle me-2"></i>
+        Add Source{% if event %} for {{ event.name }}{% endif %}
+      </h4>
     </div>
 
     <div class="card-body">
-      <form method="post" enctype="multipart/form-data" id="source-form" novalidate>
+      <form method="post" enctype="multipart/form-data" id="add-source-form" novalidate>
         {% csrf_token %}
 
         {% if form.non_field_errors %}
           <div class="alert alert-danger">{{ form.non_field_errors }}</div>
         {% endif %}
 
-        <div class="row mb-4">
-          <!-- IZQUIERDA -->
+        <div class="row g-4 mb-2">
+          <!-- Basic -->
           <div class="col-md-6">
-            <div class="card h-100">
+            <div class="card h-100 shadow-sm">
               <div class="card-header bg-light">
                 <h5 class="m-0"><i class="fas fa-info-circle me-2"></i>Basic Information</h5>
               </div>
               <div class="card-body">
-                <!-- Name -->
-                <div class="mb-3" id="name-wrap">
-                  <label class="form-label">
-                    Name <span class="text-muted float-end"><span id="name-count">0</span>/30</span>
-                  </label>
-                  <input type="text" name="name" class="form-control title-input"
-                         value="{{ form.name.value|default_if_none:'' }}"
-                         placeholder="Enter source name" maxlength="30" required>
-                  {% if form.name.errors %}
-                    <div class="invalid-feedback d-block">{{ form.name.errors|join:", " }}</div>
-                  {% endif %}
-                  <div class="form-text text-muted">Maximum 30 characters allowed</div>
-                </div>
-
-                <!-- Source Date (estilo grande como Event) -->
-                <div class="mb-3" id="date-wrap">
-                  <label for="id_source_date" class="form-label">Source Date</label>
-                  <div class="input-group input-group-lg">
-                    <input
-                      type="date"
-                      name="source_date"
-                      id="id_source_date"
-                      class="form-control"
-                      value="{{ form.source_date.value|default_if_none:''|date:'Y-m-d' }}"
-                    >
-                    <span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
-                  </div>
-                  {% if form.source_date.errors %}
-                    <div class="invalid-feedback d-block">{{ form.source_date.errors|join:", " }}</div>
-                  {% endif %}
-                  <div class="form-text text-muted">Date cannot be in the future</div>
-                  <div id="date-error" class="invalid-feedback autohide">Date cannot be in the future</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- DERECHA -->
-          <div class="col-md-6">
-            <div class="card h-100">
-              <div class="card-header bg-light">
-                <h5 class="m-0"><i class="fas fa-paperclip me-2"></i>Attachments</h5>
-              </div>
-              <div class="card-body">
                 <div class="mb-3">
-                  <div class="chip-toggle-group" id="attach-toggles" role="group">
-                    <input type="checkbox" class="btn-check" id="toggle-link" autocomplete="off">
-                    <label class="btn chip" for="toggle-link"><i class="fas fa-link me-1"></i> Link</label>
-
-                    <input type="checkbox" class="btn-check" id="toggle-file" autocomplete="off">
-                    <label class="btn chip" for="toggle-file"><i class="fas fa-file-upload me-1"></i> File</label>
-                  </div>
-                  <div class="form-text">You can add a link, multiple files, or both.</div>
+                  <label class="form-label" for="id_event">Event</label>
+                  {{ form.event }}
+                  {% if form.event.errors %}<div class="invalid-feedback d-block">{{ form.event.errors|join:", " }}</div>{% endif %}
                 </div>
 
-                <!-- URL -->
-                <div class="mb-3" id="urlField" style="display:none;">
-                  <label for="{{ form.link_or_file.id_for_label }}" class="form-label">URL</label>
-                  {{ form.link_or_file }}
-                  <div class="form-text text-muted">http(s):// or mailto:…</div>
-                  <div id="url-error" class="invalid-feedback autohide">
-                    Please enter a valid URL (http/https) or mailto link.
-                  </div>
-                  {% if form.link_or_file.errors %}
-                    <div class="invalid-feedback d-block">{{ form.link_or_file.errors|join:", " }}</div>
-                  {% endif %}
+                <div class="mb-3">
+                  <label class="form-label">
+                    Name
+                    <span class="text-muted float-end"><span id="nmCnt">0</span>/30</span>
+                  </label>
+                  {{ form.name }}
+                  <div class="form-text text-muted">Maximum 30 characters allowed.</div>
+                  {% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors|join:", " }}</div>{% endif %}
                 </div>
 
-                <!-- FILES -->
-                <div class="mb-3" id="fileField" style="display:none;">
-                  <label for="id_file_upload" class="form-label">Files</label>
-                  <input id="id_file_upload" name="file_upload" type="file" class="form-control"
-                         multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.eml,.msg">
-                  <div class="form-text">Accepted: .pdf, .doc, .docx, .ppt, .pptx, .eml, .msg (max 5MB each)</div>
-                  {% if form.file_upload.errors %}
-                    <div class="invalid-feedback d-block">{{ form.file_upload.errors|join:", " }}</div>
-                  {% endif %}
-                  <ul class="list-group mt-2" id="selected-files" style="display:none;"></ul>
+                <div class="mb-1">
+                  <label class="form-label" for="id_source_date">Date</label>
+                  {# El widget de Django ya es type="date". Lo dejamos y solo regulamos con JS. #}
+                  {{ form.source_date }}
+                  <div class="form-text text-muted">Pick a date (today or earlier).</div>
+                  {% if form.source_date.errors %}<div class="invalid-feedback d-block">{{ form.source_date.errors|join:", " }}</div>{% endif %}
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- DETAILS -->
-          <div class="col-12">
-            <div class="card">
-              <div class="card-header bg-light d-flex align-items-center">
-                <h5 class="m-0"><i class="fas fa-clipboard-list me-2"></i>Details</h5>
+          <!-- Attachments (Links & Files) -->
+          <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-light">
+                <h5 class="m-0"><i class="fas fa-paperclip me-2"></i>Links & Files</h5>
               </div>
               <div class="card-body">
-                <!-- Summary -->
-                <div class="mb-3" id="summary-wrap">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <label for="{{ form.summary.id_for_label }}" class="form-label mb-1">Summary</label>
-                    <small class="text-muted"><span id="summary-count">0</span> chars</small>
+                <!-- Link options -->
+                <div class="mb-4">
+                  <h6 class="text-muted"><i class="fas fa-link me-2"></i>Link options</h6>
+
+                  <label class="form-label">Main link (optional)</label>
+                  {{ form.link_or_file }}
+                  <div class="form-text">Use http(s):// or mailto:user@domain.</div>
+                  <div id="url-err" class="invalid-feedback" style="display:none;">
+                    Enter a valid URL (http/https) or mailto:.
                   </div>
-                  <textarea
-                    id="{{ form.summary.id_for_label }}"
-                    name="{{ form.summary.name }}"
-                    class="form-control textarea-summary"
-                    placeholder="Provide a concise, unique summary for this source"
-                  >{{ form.summary.value|default_if_none:'' }}</textarea>
-                  <div class="form-text text-muted">Provide a short, unique summary for this source.</div>
-                  {% if form.summary.errors %}
-                    <div class="invalid-feedback d-block">{{ form.summary.errors|join:", " }}</div>
-                  {% endif %}
-                  <div id="summary-dup-error" class="invalid-feedback autohide">
-                    Summary must be different from existing ones for this event.
-                  </div>
-                </div>
+                  {% if form.link_or_file.errors %}<div class="invalid-feedback d-block">{{ form.link_or_file.errors|join:", " }}</div>{% endif %}
 
-                <div class="row g-3 equal-cards">
-                  <!-- Trend -->
-                  <div class="col-md-6">
-                    <div class="card h-100">
-                      <div class="card-header bg-light"><h6 class="m-0">Potential Impact Trend</h6></div>
-                      <div class="card-body">
-                        {% with current=form.potential_impact.value %}
-                        <div class="trend-grid">
-                          <input type="radio" class="btn-check" name="potential_impact" id="pi_up" value="ESCALATING"
-                                 {% if current == "ESCALATING" %}checked{% endif %}>
-                          <label class="trend-card trend-red" for="pi_up">
-                            <i class="fas fa-arrow-up"></i><span>Escalating</span>
-                          </label>
-
-                          <input type="radio" class="btn-check" name="potential_impact" id="pi_flat" value="MAINTAINING"
-                                 {% if current == "MAINTAINING" %}checked{% endif %}>
-                          <label class="trend-card trend-amber" for="pi_flat">
-                            <i class="fas fa-arrow-right"></i><span>Maintaining</span>
-                          </label>
-
-                          <input type="radio" class="btn-check" name="potential_impact" id="pi_down" value="DECREASING"
-                                 {% if current == "DECREASING" %}checked{% endif %}>
-                          <label class="trend-card trend-green" for="pi_down">
-                            <i class="fas fa-arrow-down"></i><span>Decreasing</span>
-                          </label>
-                        </div>
-                        {% endwith %}
-                        {% if form.potential_impact.errors %}
-                          <div class="invalid-feedback d-block">{{ form.potential_impact.errors|join:", " }}</div>
-                        {% endif %}
-                      </div>
+                  <label class="form-label mt-3">Additional links</label>
+                  <div id="extra-links">
+                    <div class="input-group mb-2">
+                      <input type="text" name="extra_links" class="form-control" placeholder="http(s):// or mailto:" />
+                      <button type="button" class="btn btn-outline-secondary" onclick="addLink()" title="Add link">+</button>
                     </div>
                   </div>
-
-                  <!-- Notes -->
-                  <div class="col-md-6">
-                    <div class="card h-100">
-                      <div class="card-header bg-light"><h6 class="m-0">Potential Impact Notes</h6></div>
-                      <div class="card-body d-flex">
-                        <textarea
-                          name="{{ form.potential_impact_notes.name }}"
-                          id="{{ form.potential_impact_notes.id_for_label }}"
-                          class="form-control textarea-grow"
-                        >{{ form.potential_impact_notes.value|default_if_none:'' }}</textarea>
-                      </div>
-                      {% if form.potential_impact_notes.errors %}
-                        <div class="invalid-feedback d-block px-3 pb-3">{{ form.potential_impact_notes.errors|join:", " }}</div>
-                      {% endif %}
-                    </div>
-                  </div>
+                  <div class="form-text">You can add multiple. Remove a row with the “x”.</div>
                 </div>
 
+                <!-- File options -->
+                <div>
+                  <h6 class="text-muted"><i class="fas fa-file-upload me-2"></i>File options</h6>
+
+                  <label class="form-label">Main file (optional)</label>
+                  <input type="file" name="file_upload" class="form-control" id="id_file_upload"
+                         accept=".pdf,.doc,.docx,.eml,.msg">
+                  {% if form.file_upload.errors %}<div class="invalid-feedback d-block">{{ form.file_upload.errors|join:", " }}</div>{% endif %}
+
+                  <!-- Additional files -->
+                  <div class="mt-3">
+                    <label class="form-label">Additional files</label>
+
+                    <div id="extra-files-container">
+                      <!-- initial row -->
+                      <div class="input-group mb-2 extra-file-row">
+                        <input type="file"
+                               name="extra_files"
+                               class="form-control"
+                               accept=".pdf,.doc,.docx,.eml,.msg">
+                        <button type="button" class="btn btn-outline-danger" onclick="removeExtraFileRow(this)" title="Remove">
+                          <i class="fas fa-times"></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addExtraFileRow()" title="Add file">
+                      <i class="fas fa-plus"></i> Add another file
+                    </button>
+
+                    <div class="form-text">You can upload multiple files (.pdf, .doc, .docx, .eml, .msg).</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {{ form.event.as_hidden }}
-        {{ form.source_type }}
-        <input type="hidden" name="change_impact" value="N/A">
+        <!-- Summary -->
+        <div class="card mb-4 shadow-sm">
+          <div class="card-header bg-light">
+            <h5 class="m-0"><i class="fas fa-align-left me-2"></i>Summary</h5>
+          </div>
+          <div class="card-body">
+            {{ form.summary }}
+            <div class="invalid-feedback d-block" id="sum-dup" style="display:none;">
+              Summary must be different from existing ones for this event.
+            </div>
+            <div class="form-text">Soft check only — you can still save.</div>
+            {% if form.summary.errors %}<div class="invalid-feedback d-block">{{ form.summary.errors|join:", " }}</div>{% endif %}
+          </div>
+        </div>
 
-        <div class="d-flex justify-content-between mt-4">
-          <a href="{% url 'view_event' event_id=event.id %}" class="btn btn-outline-secondary">
+        <!-- Impact -->
+        <div class="row g-4 mb-4">
+          <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-light">
+                <h5 class="m-0"><i class="fas fa-bolt me-2"></i>Potential Impact</h5>
+              </div>
+              <div class="card-body">
+                <div class="btn-group" role="group" aria-label="Potential Impact">
+                  <input type="radio" class="btn-check" name="pi" id="piEsc" autocomplete="off">
+                  <label class="btn btn-outline-danger" for="piEsc"><i class="fas fa-arrow-up me-1"></i> Escalating</label>
+
+                  <input type="radio" class="btn-check" name="pi" id="piMain" autocomplete="off">
+                  <label class="btn btn-outline-warning" for="piMain"><i class="fas fa-arrow-right me-1"></i> Maintaining</label>
+
+                  <input type="radio" class="btn-check" name="pi" id="piDec" autocomplete="off">
+                  <label class="btn btn-outline-success" for="piDec"><i class="fas fa-arrow-down me-1"></i> Decreasing</label>
+                </div>
+
+                <div class="d-none">{{ form.potential_impact }}</div>
+                {% if form.potential_impact.errors %}<div class="invalid-feedback d-block">{{ form.potential_impact.errors|join:", " }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+              <div class="card-header bg-light">
+                <h5 class="m-0"><i class="fas fa-sticky-note me-2"></i>Impact Notes</h5>
+              </div>
+              <div class="card-body">
+                {{ form.potential_impact_notes }}
+                {% if form.potential_impact_notes.errors %}<div class="invalid-feedback d-block">{{ form.potential_impact_notes.errors|join:", " }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {{ form.source_type }} <!-- hidden -->
+
+        <div class="d-flex justify-content-between">
+          <a href="{{ cancel_url|default:'#' }}" class="btn btn-outline-secondary">
             <i class="fas fa-arrow-left me-1"></i> Cancel
           </a>
-          <button type="submit" class="btn btn-primary" id="submit-btn">
-            <i class="fas fa-save me-1"></i> Save Source
+          <button class="btn btn-primary">
+            <i class="fas fa-save me-1"></i> Save
           </button>
         </div>
       </form>
     </div>
   </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
+{# === Estilos scopeados a esta pantalla === #}
+<style>
+  #add-source-screen .form-control,
+  #add-source-screen .form-select{min-height:44px}
+  #add-source-screen .card{box-shadow:0 .125rem .45rem rgba(0,0,0,.08);border-radius:.75rem}
+  #add-source-screen .card-header{padding:.75rem 1rem}
+  #add-source-screen .form-text{font-size:.88rem}
+
+  /* Inputs más legibles */
+  #add-source-screen input[type="text"],
+  #add-source-screen input[type="url"]{font-size:1rem}
+
+  /* Textareas grandes y cómodas */
+  #add-source-screen textarea#id_summary{
+    min-height: 220px;
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+  #add-source-screen textarea#id_potential_impact_notes{
+    min-height: 160px;
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+
+  /* Botones radio como pills activas */
+  #add-source-screen .btn-check:checked + .btn{
+    color:#fff !important;
+  }
+  #add-source-screen #piEsc.btn-check:checked + label.btn{background-color:#dc3545;border-color:#dc3545;}
+  #add-source-screen #piMain.btn-check:checked + label.btn{background-color:#ffc107;border-color:#ffc107;color:#212529 !important;}
+  #add-source-screen #piDec.btn-check:checked + label.btn{background-color:#198754;border-color:#198754;}
+</style>
+
+{# Pasamos una bandera para limpiar la fecha SOLO en GET/primera carga #}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  /* ===== Name counter ===== */
-  const nameInput = document.querySelector('#name-wrap input[name="name"]');
-  const nameCount = document.getElementById('name-count');
-  function refreshNameCount(){
-    const n = (nameInput?.value || '').length;
-    if (!nameCount) return;
-    nameCount.textContent = n;
-    nameCount.className = '';
-    if (n >= 30) nameCount.classList.add('text-danger');
-    else if (n > 24) nameCount.classList.add('text-warning');
-    else nameCount.classList.add('text-muted');
-  }
-  nameInput?.addEventListener('input', refreshNameCount); refreshNameCount();
-
-  /* ===== Date: max=today + validate ===== */
-  const dateInput = document.getElementById('id_source_date');
-  const dateError = document.getElementById('date-error');
-  if (dateInput){
-    const today = new Date(); today.setHours(0,0,0,0);
-    const pad = n => String(n).padStart(2,'0');
-    dateInput.max = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
-  }
-  const isPastOrToday = v => { if(!v) return false; const d = new Date(v); const t = new Date(); t.setHours(0,0,0,0); return d<=t; };
-
-  /* ===== Toggles ===== */
-  const toggleLink = document.getElementById('toggle-link');
-  const toggleFile = document.getElementById('toggle-file');
-  const urlField = document.getElementById('urlField');
-  const fileField = document.getElementById('fileField');
-  const urlInput = document.getElementById('id_link_or_file');
-  function syncAttachUI(){ urlField.style.display = toggleLink.checked ? '' : 'none'; fileField.style.display = toggleFile.checked ? '' : 'none'; }
-  if (urlInput?.value) toggleLink.checked = true; syncAttachUI();
-  toggleLink.addEventListener('change', syncAttachUI); toggleFile.addEventListener('change', syncAttachUI);
-
-  /* ===== URL validator ===== */
-  const urlError = document.getElementById('url-error');
-  function isValidUrl(v){
-    if (!v) return false;
-    v = v.trim();
-    if (v.startsWith('mailto:')) return v.length > 7 && v.includes('@');
-    try { const u = new URL(v); return u.protocol==='http:' || u.protocol==='https:'; } catch { return false; }
-  }
-
-  /* ===== Files store ===== */
-  const fileInput = document.getElementById('id_file_upload');
-  const fileListEl = document.getElementById('selected-files');
-  let fileStore = [];
-  const keyOf = f => `${f.name}_${f.lastModified}_${f.size}`;
-
-  function syncInputFromStore(){
-    const dt = new DataTransfer();
-    fileStore.forEach(x => dt.items.add(x.file));
-    fileInput.files = dt.files;
-  }
-
-  function renderFileList(){
-    fileListEl.innerHTML = '';
-    if (fileStore.length === 0){ fileListEl.style.display='none'; return; }
-    fileListEl.style.display = '';
-    fileStore.forEach(({file, key}) => {
-      const li = document.createElement('li');
-      li.className = 'list-group-item d-flex justify-content-between align-items-center';
-      li.dataset.key = key;
-      li.innerHTML = `<div><i class="fas fa-file me-2"></i>${file.name} <span class="text-muted small">(${Math.ceil(file.size/1024)} KB)</span></div>`;
-      const btn = document.createElement('button');
-      btn.type='button'; btn.className='btn btn-sm btn-outline-danger'; btn.innerHTML='<i class="fas fa-times"></i>';
-      btn.addEventListener('click', () => {
-        fileStore = fileStore.filter(x => x.key !== key);
-        syncInputFromStore(); renderFileList();
-      });
-      li.appendChild(btn);
-      fileListEl.appendChild(li);
-    });
-  }
-
-  fileInput?.addEventListener('change', e => {
-    Array.from(e.target.files || []).forEach(f => {
-      const k = keyOf(f);
-      if (!fileStore.find(x => x.key === k)) fileStore.push({file:f, key:k});
-    });
-    syncInputFromStore();
-    renderFileList();
-    if (fileStore.length) { toggleFile.checked = true; syncAttachUI(); }
-    e.target.value = '';
-  });
-
-  /* ===== Summary: contador + auto-grow + unicidad ===== */
-  const summaryEl = document.getElementById('id_summary');
-  const summaryCount = document.getElementById('summary-count');
-  const summaryDupError = document.getElementById('summary-dup-error');
-
-  function updateSummaryCount(){ if(summaryEl && summaryCount){ summaryCount.textContent = summaryEl.value.length; } }
-  function autosize(el){ el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; }
-
-  summaryEl && (['input','change'].forEach(evt => summaryEl.addEventListener(evt, () => { updateSummaryCount(); autosize(summaryEl); })));
-  updateSummaryCount(); if(summaryEl){ autosize(summaryEl); }
-
-  let existingSummaries = [];
-  try { existingSummaries = JSON.parse('{{ existing_summaries_json|default:"[]"|escapejs }}'); } catch {}
-  const isSummaryUnique = v => {
-    const n = String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
-    if (!n) return true;
-    return !existingSummaries.some(s => String(s||'').trim().toLowerCase().replace(/\s+/g,' ') === n);
-  };
-
-  /* ===== Submit guard ===== */
-  document.getElementById('submit-btn').addEventListener('click', function(e){
-    let ok = true;
-
-    if (!nameInput.value.trim()){ ok=false; nameInput.classList.add('is-invalid'); } else nameInput.classList.remove('is-invalid');
-
-    if (!isPastOrToday(dateInput.value)){ ok=false; dateError.classList.remove('autohide'); dateInput.classList.add('is-invalid'); }
-    else { dateError.classList.add('autohide'); dateInput.classList.remove('is-invalid'); }
-
-    if (toggleLink.checked){
-      if (!isValidUrl(urlInput?.value)){ ok=false; urlError.classList.remove('autohide'); urlInput?.classList.add('is-invalid'); }
-      else { urlError.classList.add('autohide'); urlInput?.classList.remove('is-invalid'); }
-    } else { urlError.classList.add('autohide'); urlInput?.classList.remove('is-invalid'); }
-
-    if (!isSummaryUnique(summaryEl?.value)){ ok=false; summaryDupError.classList.remove('autohide'); summaryEl?.classList.add('is-invalid'); }
-    else { summaryDupError.classList.add('autohide'); summaryEl?.classList.remove('is-invalid'); }
-
-    if (!ok){
-      e.preventDefault();
-      (document.querySelector('.is-invalid') || document.querySelector('.invalid-feedback:not(.autohide)'))
-        ?.scrollIntoView({behavior:'smooth', block:'center'});
-    }
-  });
-});
+  const FORCE_EMPTY_DATE = {% if not form.errors and request.method != 'POST' %}true{% else %}false{% endif %};
 </script>
 
-<style>
-  .form-control, .form-select{min-height:38px;background:#fff}
-  .title-input{font-size:1.1rem;font-weight:500}
-  .card{box-shadow:0 0.125rem 0.25rem rgba(0,0,0,.075);margin-bottom:1rem}
-  .card-header{padding:.75rem 1rem}
-  .form-label{font-weight:500;margin-bottom:4px}
-  .is-invalid{border:1px solid #dc3545!important}
-  .invalid-feedback.autohide{display:none !important;}
-  .textarea-grow{min-height:140px;width:100%}
-  .textarea-summary{min-height:110px; width:100%; resize:vertical; overflow:hidden;}
+<script>
+  // name counter + maxlength (UI)
+  (function(){
+    const i=document.querySelector('input[name="name"]'), c=document.getElementById('nmCnt');
+    if(i){ i.setAttribute('maxlength','30'); i.classList.add('title-input'); }
+    function u(){ c.textContent=(i?.value||'').length; }
+    i&&i.addEventListener('input',u); u();
+  })();
 
-  .chip-toggle-group .chip{
-    border:1px solid #ced4da;background:#fff;margin-right:.5rem;padding:.4rem .75rem;border-radius:9999px;
-    display:inline-flex;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,.04);
-  }
-  .chip-toggle-group .btn-check:checked + .chip{
-    border-color:#0d6efd;box-shadow:0 0 0 .15rem rgba(13,110,253,.25);
+  // date: max hoy, sin futuro; requerido y vacío en primera carga
+  (function(){
+    const d=document.getElementById('id_source_date'); if(!d) return;
+    const t=new Date(), p=n=>String(n).padStart(2,'0');
+    d.max = `${t.getFullYear()}-${p(t.getMonth()+1)}-${p(t.getDate())}`;
+    d.required = true;
+
+    // Deja el campo en blanco en la primera carga (no POST/no errores)
+    if(FORCE_EMPTY_DATE){ try{ d.value = ''; }catch(e){} }
+
+    // Sugerencia visual
+    if(!d.getAttribute('placeholder')) d.setAttribute('placeholder','Select a date…');
+  })();
+
+  // potential impact (buttons -> hidden select)
+  (function(){
+    const sel=document.getElementById('id_potential_impact')||document.querySelector('select[name="potential_impact"]');
+    const map={piEsc:"ESCALATING",piMain:"MAINTAINING",piDec:"DECREASING"};
+    function pick(v){
+      if(!sel) return;
+      sel.value=v||"";
+      ["piEsc","piMain","piDec"].forEach(id=>{ const r=document.getElementById(id); if(r) r.checked=(map[id]===v); });
+    }
+    pick(sel?.value);
+    ["piEsc","piMain","piDec"].forEach(id=>{
+      const el=document.getElementById(id); if(!el) return;
+      el.addEventListener("change",()=>pick(map[id]));
+    });
+  })();
+
+  // Mejorar textareas: placeholder si no viene desde el form
+  (function(){
+    const s=document.getElementById('id_summary');
+    if(s && !s.placeholder){ s.placeholder = 'Concise summary of the source content…'; }
+    const n=document.getElementById('id_potential_impact_notes');
+    if(n && !n.placeholder){ n.placeholder = 'Context, rationale, affected LOBs, uncertainties…'; }
+  })();
+
+  // dynamic links
+  function addLink(){
+    const cont=document.getElementById('extra-links');
+    const row=document.createElement('div'); row.className='input-group mb-2';
+    row.innerHTML=`
+      <input type="text" name="extra_links" class="form-control" placeholder="http(s):// or mailto:" />
+      <button type="button" class="btn btn-outline-danger" title="Remove" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+    `;
+    cont.appendChild(row);
   }
 
-  .trend-grid{display:grid;gap:.6rem;grid-template-columns:repeat(3,minmax(0,1fr))}
-  @media (max-width: 576px){ .trend-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
-  .trend-card{
-    display:flex;align-items:center;justify-content:center;gap:.55rem;
-    padding:.65rem .85rem;border:2px solid #dee2e6;border-radius:.9rem;background:#fff;cursor:pointer;
-    transition:.15s;height:100%;font-weight:600;
+  // Additional files: multiple rows you can remove
+  function addExtraFileRow(){
+    const wrap = document.getElementById('extra-files-container');
+    const row = document.createElement('div');
+    row.className = 'input-group mb-2 extra-file-row';
+    row.innerHTML = `
+      <input type="file" name="extra_files" class="form-control" accept=".pdf,.doc,.docx,.eml,.msg">
+      <button type="button" class="btn btn-outline-danger" onclick="removeExtraFileRow(this)" title="Remove">
+        <i class="fas fa-times"></i>
+      </button>
+    `;
+    wrap.appendChild(row);
   }
-  .trend-card i{font-size:1rem;}
-  .trend-card:hover{transform:translateY(-1px);box-shadow:0 0.25rem 0.5rem rgba(0,0,0,.06)}
-  .trend-red{border-color:#f8d7da;color:#b02a37}
-  .trend-amber{border-color:#ffe8a1;color:#997404}
-  .trend-green{border-color:#cfe9cf;color:#0f5132}
-  .btn-check:checked + .trend-card{border-color:#0d6efd;box-shadow:0 0 0 .15rem rgba(13,110,253,.25)}
-  .equal-cards > [class*="col-"] > .card{height:100%}
+  function removeExtraFileRow(btn){
+    const row = btn.closest('.extra-file-row');
+    if(!row) return;
+    const wrap = document.getElementById('extra-files-container');
+    if(wrap.querySelectorAll('.extra-file-row').length === 1){
+      const input = row.querySelector('input[type="file"]');
+      if(input) input.value = '';
+      return;
+    }
+    row.remove();
+  }
 
-  /* Alto consistente del input-group grande */
-  .input-group-lg > .form-control,
-  .input-group-lg > .input-group-text { padding:.8rem .9rem; }
-</style>
+  // URL validation (main + additional links)
+  (function(){
+    function isValidUrl(v){
+      if(!v) return true; // empty is allowed
+      v=v.trim();
+      if(v.startsWith('mailto:')) return v.length>7 && v.includes('@');
+      try{ const u=new URL(v); return ['http:','https:'].includes(u.protocol); }catch{ return false; }
+    }
+    const form=document.getElementById('add-source-form');
+    form.addEventListener('submit', (e)=>{
+      let ok=true;
+      const main=document.getElementById('id_link_or_file');
+      const urlErr=document.getElementById('url-err');
+      if(main && main.value && !isValidUrl(main.value)){
+        ok=false; urlErr.style.display='block'; main.classList.add('is-invalid');
+      }else{
+        urlErr.style.display='none'; main?.classList.remove('is-invalid');
+      }
+      document.querySelectorAll('input[name="extra_links"]').forEach(inp=>{
+        if(inp.value && !isValidUrl(inp.value)){ ok=false; inp.classList.add('is-invalid'); }
+        else { inp.classList.remove('is-invalid'); }
+      });
+      if(!ok){
+        e.preventDefault();
+        (document.querySelector('.is-invalid')||urlErr)?.scrollIntoView({behavior:'smooth', block:'center'});
+      }
+    });
+  })();
+
+  // soft duplicate-summary detection
+  const existingSummaries = {{ existing_summaries_json|safe }};
+  (function(){
+    const el=document.getElementById('id_summary');
+    const area=document.getElementById('sum-dup');
+    function norm(s){ return String(s||'').trim().toLowerCase().replace(/\s+/g,' '); }
+    el && el.addEventListener('blur', ()=>{
+      const v=norm(el.value);
+      if(v && (existingSummaries||[]).map(norm).includes(v)) area.style.display='block';
+      else area.style.display='none';
+    });
+  })();
+</script>
 {% endblock %}

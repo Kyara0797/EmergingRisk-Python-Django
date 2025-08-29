@@ -5,9 +5,9 @@
     <!-- Dynamic title -->
     <h2 class="my-4">
         {% if category %}
-        <i class="fas fa-tag me-2"></i>Thread: {{ category.name }}
+        <i class="fas fa-tag me-2"></i>Threat: {{ category.name }}
         {% else %}
-        <i class="fas fa-list-ul me-2"></i>All Thread
+        <i class="fas fa-list-ul me-2"></i>All Threat
         {% endif %}
     </h2>
 
@@ -15,10 +15,10 @@
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-primary text-white">
             <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Thread List</h5>
+                <h5 class="mb-0">Threat List</h5>
                 {# If we are inside a category, pass ?category=<id> to preselect on Add Theme #}
                 <a href="{% url 'add_theme' %}{% if category %}?category={{ category.id }}{% endif %}" class="btn btn-light btn-sm">
-                    <i class="fas fa-plus me-1"></i> Add Thread
+                    <i class="fas fa-plus me-1"></i> Add Threat
                 </a>
             </div>
         </div>
@@ -34,7 +34,7 @@
                               id="searchInput"
                               name="q"
                               class="form-control"
-                              placeholder="Search Threads..."
+                              placeholder="Search Threat..."
                               value="{{ request.GET.q }}">
                             <button type="submit" class="btn btn-outline-secondary" id="searchButton">
                                 <i id="searchIcon" class="fas fa-search"></i>
@@ -86,7 +86,7 @@
                         {% empty %}
                         <tr>
                             <td colspan="4" class="text-center py-4">
-                                No Threads found.
+                                No Threat found.
                                 <a href="{% url 'add_theme' %}{% if category %}?category={{ category.id }}{% endif %}" class="ms-2">Create one?</a>
                             </td>
                         </tr>
@@ -94,7 +94,7 @@
 
                         <!-- Row shown when client-side filter has no results -->
                         <tr id="noResults" class="d-none">
-                            <td colspan="4" class="text-center py-4">No Threads match your search.</td>
+                            <td colspan="4" class="text-center py-4">No Threat match your search.</td>
                         </tr>
                     </tbody>
                 </table>

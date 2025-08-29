@@ -1,11 +1,23 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
+from .views import SourceDetailView
+from config import settings
+from django.conf.urls.static import static
+from django.views.generic.base import RedirectView
+from django.contrib.auth.decorators import login_required
+from django.contrib import admin
+
 
 urlpatterns = [
     # Home / dashboard
+    
     path("", views.dashboard, name="dashboard"),
-
-    # Thread
+    # path("", RedirectView.as_view(pattern_name="dashboard", permanent=False)),
+    path("accounts/", include("django.contrib.auth.urls")),
+    
+    path("admin/", admin.site.urls),
+    
+    # Threat
     path("themes/all/", views.theme_list_all, name="theme_list_all"),
     path("themes/category/<int:category_id>/", views.theme_list_by_category, name="theme_list_by_category"),
     path("themes/<int:pk>/", views.view_theme, name="view_theme"),
@@ -25,18 +37,16 @@ urlpatterns = [
     path("events/view/<int:event_id>/", views.view_event, name="view_event"),    # usado por templates que llaman 'view_event'
 
     path("events/<int:pk>/edit/", views.edit_event, name="edit_event"),
-
     
     path("events/<int:pk>/delete/", views.EventDeleteView.as_view(), name="event_delete"),
 
-    # Sources (vinculadas a un Event)
     path("events/<int:event_pk>/sources/add/", views.add_source, name="add_source"),
     path("sources/redirect/add/", views.add_source_redirect, name="add_source_redirect"),
     path("source/<int:pk>/", views.source_detail, name="source_detail"),
     path("source/<int:pk>/edit/", views.SourceUpdateView.as_view(), name="edit_source"),
     path("source/<int:pk>/delete/", views.SourceDeleteView.as_view(), name="delete_source"),
     path("source/<int:pk>/toggle/", views.toggle_source_active, name="toggle_source_active"),
-
+        
     # AJAX helpers
     path("ajax/themes/", views.get_themes, name="get_themes"),
     path("ajax/events/", views.get_events, name="get_events"),
@@ -44,3 +54,6 @@ urlpatterns = [
     # Admin / logs
     path("access-logs/", views.access_logs, name="access_logs"),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
