@@ -53,25 +53,6 @@ class CategoryForm(forms.ModelForm):
         }
 
 class ThemeForm(forms.ModelForm):
-    identified_at = forms.DateField(
-        required=True,
-        widget=forms.DateInput(
-            attrs={
-                "type": "date",
-                "class": "form-control",
-                "placeholder": "Select a date",
-                "id": "id_identified_at",
-            },
-            format="%Y-%m-%d",
-        ),
-        input_formats=["%Y-%m-%d"],
-        label="Identified date",
-        help_text="Pick a date (today or past).",
-        error_messages={
-            "required": "Please select a date.",
-            "invalid": "Enter a valid date.",
-        },
-    )
     
     category = forms.ModelChoiceField(
         queryset=Category.objects.all().order_by('name'),
@@ -88,7 +69,7 @@ class ThemeForm(forms.ModelForm):
     )
     class Meta:
         model = Theme
-        fields = ['category', 'name', 'risk_rating', 'onset_timeline', 'identified_at']
+        fields = ['category', 'name', 'risk_rating', 'onset_timeline']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'risk_rating': forms.Select(attrs={'class': 'form-control'}),
@@ -100,20 +81,7 @@ class ThemeForm(forms.ModelForm):
         for field_name, field in self.fields.items():
             field.widget.attrs['class'] = 'form-control'
 
-        inst = getattr(self, "instance", None)
-        if inst and getattr(inst, "pk", None) and getattr(inst, "identified_at", None):
-            local_dt = timezone.localtime(inst.identified_at)
-            self.initial["identified_at"] = local_dt.date().strftime("%Y-%m-%d")
-            
-    def clean_identified_at(self):
-        d = self.cleaned_data.get("identified_at")
-        if not d:
-            return d
-        naive_dt = datetime.combine(d, time.min)
-        aware_dt = timezone.make_aware(naive_dt, timezone.get_current_timezone())
-        if aware_dt.date() > timezone.localdate():
-            raise forms.ValidationError("Date must be today or in the past.")
-        return aware_dt   
+    
     
 class EventForm(forms.ModelForm):
     name = forms.CharField(
