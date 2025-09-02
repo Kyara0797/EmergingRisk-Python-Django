@@ -11,72 +11,60 @@
         {% endif %}
     </h2>
 
-    <!-- Wrapper card -->
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-primary text-white">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Threat List</h5>
-                {# If we are inside a category, pass ?category=<id> to preselect on Add Theme #}
                 <a href="{% url 'add_theme' %}{% if category %}?category={{ category.id }}{% endif %}" class="btn btn-light btn-sm">
                     <i class="fas fa-plus me-1"></i> Add Threat
                 </a>
             </div>
         </div>
-        
-        <div class="card-body">
-            <!-- Search bar -->
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <form method="GET" action="" class="d-flex gap-2">
-                        <div class="input-group">
-                            <input
-                              type="text"
-                              id="searchInput"
-                              name="q"
-                              class="form-control"
-                              placeholder="Search Threat..."
-                              value="{{ request.GET.q }}">
-                            <button type="submit" class="btn btn-outline-secondary" id="searchButton">
-                                <i id="searchIcon" class="fas fa-search"></i>
-                                <span id="searchSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
 
-            <!-- Themes table -->
-            <div class="table-responsive" id="themeList">
-                <table class="table table-hover">
+        <div class="card-body">
+            <!-- Usamos el buscador nativo de DataTables -->
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="themesTable" style="width:100%;">
                     <thead class="table-light">
                         <tr>
                             <th>Name</th>
-                            <th>Category</th>
+                            <th class="no-sort">Category</th>
+                            <th>Onset</th>
                             <th>Risk</th>
-                            <th style="width: 160px;">Actions</th>
+                            <th class="no-sort" style="width:160px;">Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="themeTbody">
+                    <tbody>
                         {% for theme in themes %}
-                        <tr class="theme-item">
+                        <tr class="theme-item" data-href="{% url 'view_theme' pk=theme.id %}">
+                            <!-- NAME (ordenable) -->
                             <td>
                                 <a href="{% url 'view_theme' pk=theme.id %}" class="text-decoration-none">
                                     {{ theme.name }}
                                 </a>
                             </td>
+
+                            <!-- CATEGORY (NO ordenable) -->
                             <td>{{ theme.category.name }}</td>
+
+                            <!-- ONSET (orden por el texto mostrado) -->
+                            <td>
+                                {{ theme.get_onset_timeline_display }}
+                            </td>
+
+                            <!-- RISK (orden por el texto mostrado) -->
                             <td>
                                 <span class="badge bg-{{ theme.get_risk_color }}">
                                     {{ theme.get_risk_rating_display }}
                                 </span>
                             </td>
+
+                            <!-- ACTIONS (NO ordenable) -->
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <a href="{% url 'edit_theme' theme.id %}" class="btn btn-outline-warning" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>
-
-                                    {# IMPORTANT: use positional arg to match path('themes/<int:theme_pk>/events/add/', ...) #}
                                     <a href="{% url 'add_event' theme.id %}" class="btn btn-outline-primary" title="Add Event">
                                         <i class="fas fa-plus"></i> Event
                                     </a>
@@ -85,23 +73,18 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="4" class="text-center py-4">
+                            <td colspan="5" class="text-center py-4">
                                 No Threat found.
                                 <a href="{% url 'add_theme' %}{% if category %}?category={{ category.id }}{% endif %}" class="ms-2">Create one?</a>
                             </td>
                         </tr>
                         {% endfor %}
-
-                        <!-- Row shown when client-side filter has no results -->
-                        <tr id="noResults" class="d-none">
-                            <td colspan="4" class="text-center py-4">No Threat match your search.</td>
-                        </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Pagination -->
+        {# Si sólo usarás DataTables, puedes quitar esta paginación del servidor #}
         {% if is_paginated %}
         <div class="card-footer bg-white">
             <nav aria-label="Page navigation">
@@ -113,7 +96,6 @@
                         </a>
                     </li>
                     {% endif %}
-                    
                     {% for num in page_obj.paginator.page_range %}
                     <li class="page-item {% if page_obj.number == num %}active{% endif %}">
                         <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
@@ -121,7 +103,6 @@
                         </a>
                     </li>
                     {% endfor %}
-                    
                     {% if page_obj.has_next %}
                     <li class="page-item">
                         <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
@@ -137,99 +118,83 @@
 </div>
 {% endblock %}
 
+{% block scripts %}
 <style>
-    .search-loading { position: relative; }
-    .search-loading::after {
-        content: "";
-        position: absolute;
-        top: 0; right: 40px;
-        width: 20px; height: 20px;
-        border: 2px solid #f3f3f3;
-        border-top: 2px solid #3498db;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        display: none;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+/* Oculta flechas de sort en columnas sin orden (Category, Actions) y desactiva clic */
+#themesTable th.no-sort.sorting:before,
+#themesTable th.no-sort.sorting:after,
+#themesTable th.no-sort.sorting_asc:before,
+#themesTable th.no-sort.sorting_asc:after,
+#themesTable th.no-sort.sorting_desc:before,
+#themesTable th.no-sort.sorting_desc:after,
+#themesTable th.no-sort.sorting_disabled:before,
+#themesTable th.no-sort.sorting_disabled:after {
+  display: none !important;
+}
+#themesTable th.no-sort { pointer-events: none; }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput   = document.getElementById('searchInput');
-    const searchButton  = document.getElementById('searchButton');
-    const searchIcon    = document.getElementById('searchIcon');
-    const searchSpinner = document.getElementById('searchSpinner');
-    const themeList     = document.getElementById('themeList');
-    const tbody         = document.getElementById('themeTbody');
-    const noResultsRow  = document.getElementById('noResults');
+document.addEventListener('DOMContentLoaded', function () {
+  // helper para extraer texto plano de una celda HTML (sirve para ordenar por el texto visible)
+  function plainText(data) {
+    const div = document.createElement('div');
+    div.innerHTML = data == null ? '' : data;
+    return (div.textContent || div.innerText || '').trim();
+  }
 
-    if (!searchInput || !searchButton) return;
+  const dt = $('#themesTable').DataTable({
+    autoWidth: false,
+    ordering: true,
+    order: [],            // sin orden inicial forzado
+    pageLength: 10,
+    // Name, Onset y Risk ordenables; Category y Actions NO.
+    columnDefs: [
+      // 0 Name: ordenable por defecto
+      { targets: 0, orderable: true },
 
-    let searchTimeout;
+      // 1 Category: NO ordenable
+      { targets: 1, orderable: false, className: 'no-sort' },
 
-    function showLoading(show) {
-        if (!searchIcon || !searchSpinner || !themeList) return;
-        if (show) {
-            searchIcon.classList.add('d-none');
-            searchSpinner.classList.remove('d-none');
-            searchButton.disabled = true;
-            themeList.classList.add('opacity-50');
-        } else {
-            searchIcon.classList.remove('d-none');
-            searchSpinner.classList.add('d-none');
-            searchButton.disabled = false;
-            themeList.classList.remove('opacity-50');
+      // 2 Onset: ordenar por el TEXTO visible
+      {
+        targets: 2,
+        orderable: true,
+        render: function (data, type) {
+          if (type === 'sort' || type === 'type') return plainText(data);
+          return data;
         }
-    }
+      },
 
-    function filterRows(term) {
-        const items = tbody.querySelectorAll('tr.theme-item');
-        let hasResults = false;
-        const needle = term.trim().toLowerCase();
-
-        items.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            const match = !needle || text.includes(needle);
-            row.style.display = match ? '' : 'none';
-            if (match) hasResults = true;
-        });
-
-        if (noResultsRow) {
-            noResultsRow.classList.toggle('d-none', hasResults);
+      // 3 Risk: ordenar por el TEXTO visible dentro del badge
+      {
+        targets: 3,
+        orderable: true,
+        render: function (data, type) {
+          if (type === 'sort' || type === 'type') return plainText(data);
+          return data;
         }
-    }
+      },
 
-    function updateURL(term) {
-        const currentUrl = new URL(window.location.href);
-        if (term) currentUrl.searchParams.set('q', term);
-        else currentUrl.searchParams.delete('q');
-        history.replaceState(null, '', currentUrl.toString());
+      // 4 Actions: NO ordenable ni searchable + clase para ocultar flechas
+      { targets: 4, orderable: false, searchable: false, className: 'no-sort' }
+    ],
+    language: {
+      search: "Search:",
+      lengthMenu: "Show _MENU_",
+      info: "Showing _START_ to _END_ of _TOTAL_ threats",
+      infoEmpty: "Showing 0 to 0 of 0 threats",
+      emptyTable: "No threats available",
+      paginate: { first: "First", last: "Last", next: "Next", previous: "Previous" }
     }
+  });
 
-    function performSearch() {
-        showLoading(true);
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            const val = searchInput.value || '';
-            updateURL(val);
-            filterRows(val);
-            showLoading(false);
-        }, 400);
-    }
-
-    // Listeners
-    searchInput.addEventListener('input', performSearch);
-    searchButton.addEventListener('click', function(e){
-        e.preventDefault(); // avoid full submit
-        performSearch();
-    });
-
-    // Initial filter if ?q= is present
-    const urlParams = new URLSearchParams(window.location.search);
-    const initial = urlParams.get('q') || '';
-    if (initial) {
-        searchInput.value = initial;
-        filterRows(initial);
-    }
+  // click en fila para ir al detalle (excepto clicks en botones/enlaces)
+  $('#themesTable tbody').on('click', 'tr', function (e) {
+    if ($(e.target).closest('a,button,.btn').length) return;
+    const href = $(this).attr('data-href');
+    if (href) window.location = href;
+  });
 });
 </script>
+{% endblock %}
