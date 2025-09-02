@@ -23,9 +23,6 @@ from .forms import ThemeForm, EventForm, SourceForm, RegisterForm
 import json
 import os
 from urllib.parse import urlparse
-from django.db.models.expressions import Subquery, OuterRef
-from django.forms.fields import DateField
-from django.db.models.functions.comparison import Coalesce
 
 # Extensiones permitidas para archivos
 ALLOWED_FILE_EXTS = {".pdf", ".doc", ".docx", ".eml", ".msg"}
@@ -1180,56 +1177,3 @@ def custom_logout(request):
     return redirect('login')
 
 
-def theme_list_view(request, category_id=None):
-    # Última fecha de Event por Theme (DateField)
-    last_event_dt = Subquery(
-        Event.objects
-             .filter(theme=OuterRef('pk'))
-             .order_by('-date_identified')
-             .values('date_identified')[:1],
-        output_field=DateField(),
-    )
-
-    # Última fecha de Source por Theme (por eventos de ese theme)
-    last_source_dt = Subquery(
-        Source.objects
-              .filter(event__theme=OuterRef('pk'))
-              .order_by('-source_date')
-              .values('source_date')[:1],
-        output_field=DateField(),
-    )
-
-    # Orden semántico para RISK (Low->Critical = 1..4)
-    risk_order = Case(
-        When(risk_rating='LOW', then=1),
-        When(risk_rating='MEDIUM', then=2),
-        When(risk_rating='HIGH', then=3),
-        When(risk_rating='CRITICAL', then=4),
-        default=999,
-        output_field=IntegerField(),
-    )
-
-    # Orden semántico para ONSET (según el orden en Theme.ONSET_TIMELINE_CHOICES)
-    onset_whens = []
-    for idx, (code, _label) in enumerate(getattr(Theme, 'ONSET_TIMELINE_CHOICES', []), start=1):
-        onset_whens.append(When(onset_timeline=code, then=idx))
-    onset_order = Case(*onset_whens, default=999, output_field=IntegerField())
-
-    qs = (Theme.objects
-          .select_related('category')
-          .annotate(
-              # columna que usará el DataTable (oculta) para ordenar por “más nuevo/antiguo”
-              sort_date=Coalesce(last_event_dt, last_source_dt),
-              risk_order=risk_order,
-              onset_order=onset_order,
-          ))
-
-    category = None
-    if category_id:
-        category = get_object_or_404(Category, pk=category_id)
-        qs = qs.filter(category=category)
-
-    return render(request, 'tracker/theme_list_datatable.html', {
-        'themes': qs,
-        'category': category,
-    })
