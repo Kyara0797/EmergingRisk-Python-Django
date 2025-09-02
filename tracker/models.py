@@ -228,14 +228,14 @@ RISK_TAXONOMY_LV3 = {
 
 RISK_CHOICES = [
     ('low', 'Low'),
-    ('moderate', 'Moderate'),
+    ('medium', 'Medium'),
     ('high', 'High'),
     ('critical', 'Critical'),
 ]
 
 RISK_COLORS = {
     'low': 'success',
-    'moderate': 'warning',
+    'medium': 'warning',
     'high': 'danger',
     'critical': 'dark'
 }

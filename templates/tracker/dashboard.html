@@ -35,7 +35,7 @@
                   <h6 class="card-title mb-3 fw-bold">{{ category.name }}</h6>
                   <a href="{% url 'theme_list_by_category' category_id=category.id %}"
                      class="btn btn-sm btn-outline-primary align-self-center mt-auto py-1 px-3">
-                    View Threat
+                    View Threats
                   </a>
                 </div>
               </div>
@@ -47,22 +47,23 @@
     </div>
   </div>
 
-  <!-- Themes (FULL WIDTH) -->
+  <!-- Threats -->
   <div class="row mt-4">
     <div class="col-12">
       <div class="card">
         <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-          <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Recent Threat</h5>
+          <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Recent Threats</h5>
           <a href="{% url 'theme_list_all' %}" class="btn btn-sm btn-light">View All</a>
         </div>
+
         <div class="card-body">
-          <!-- DataTable se encarga de la búsqueda y filtrado -->
           <div class="table-responsive">
             <table class="table table-hover table-clickable table-fixed" id="themesTable">
               <thead>
                 <tr>
                   <th class="col-name">Name</th>
                   <th class="col-category">Category</th>
+                  <th class="col-date">Date</th>
                   <th class="col-risk">Risk</th>
                 </tr>
               </thead>
@@ -75,6 +76,9 @@
                     </a>
                   </td>
                   <td class="truncate" title="{{ theme.category }}">{{ theme.category }}</td>
+                  <td class="threat-date" data-iso="{{ theme.created_at|date:'Y-m-d' }}">
+                    {{ theme.created_at|date:"Y-m-d" }}
+                  </td>
                   <td>
                     <span class="badge bg-{{ theme.get_risk_color }}">{{ theme.risk_rating }}</span>
                   </td>
@@ -84,11 +88,12 @@
             </table>
           </div>
         </div>
+
       </div>
     </div>
   </div>
 
-  <!-- Events (FULL WIDTH) -->
+  <!-- Events -->
   <div class="row mt-4">
     <div class="col-12">
       <div class="card">
@@ -97,15 +102,33 @@
           <a href="{% url 'event_list' %}" class="btn btn-sm btn-light">View All</a>
         </div>
         <div class="card-body">
-          <!-- Search bar for Events -->
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <div class="input-group input-group-sm">
-                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                <input type="text" id="eventSearch" class="form-control" placeholder="Search events by name..." />
+
+          <!-- Controles -->
+          <div class="row mb-3 align-items-center">
+            <div class="col-12 col-md-4 d-flex align-items-center gap-2 mb-2 mb-md-0">
+              <label class="mb-0">Show</label>
+              <select id="eventShowCount" class="form-select form-select-sm" style="width:auto;">
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="all">All</option>
+              </select>
+              <span class="text-muted small">items</span>
+            </div>
+            <div class="col-12 col-md-8">
+              <div class="d-flex justify-content-md-end align-items-center gap-2">
+                <label for="eventSearch" class="mb-0 fw-medium">Event Search:</label>
+                <div class="input-group input-group-sm" style="max-width: 360px;">
+                  <span class="input-group-text"><i class="fas fa-search"></i></span>
+                  <input type="text" id="eventSearch" class="form-control" placeholder="Search events by name...">
+                </div>
               </div>
             </div>
-            <div class="col-md-6 text-end">
+          </div>
+
+          <!-- Orden -->
+          <div class="row mb-3">
+            <div class="col-12 text-end">
               <div class="btn-group btn-group-sm" role="group">
                 <button type="button" class="btn btn-outline-secondary sort-event" data-sort="name">Name</button>
                 <button type="button" class="btn btn-outline-secondary sort-event" data-sort="date">Date</button>
@@ -114,54 +137,48 @@
             </div>
           </div>
 
+          <!-- Lista -->
           <div class="accordion" id="eventsAccordion">
             {% for event in events %}
-            <div class="accordion-item border-0 event-item" 
-                 data-name="{{ event.name|lower }}" 
-                 data-date="{{ event.date_identified|date:'Ymd' }}" 
+            <div class="accordion-item border-0 event-item"
+                 data-name="{{ event.name|lower }}"
+                 data-date="{{ event.date_identified|date:'Ymd' }}"
                  data-risk="{{ event.risk_rating|lower }}">
               <h2 class="accordion-header" id="heading{{ event.id }}">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
-                        data-bs-target="#collapse{{ event.id }}" aria-expanded="false" 
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapse{{ event.id }}" aria-expanded="false"
                         aria-controls="collapse{{ event.id }}">
                   <div class="d-flex w-100 justify-content-between align-items-center">
                     <div class="me-3">
                       <strong class="event-name">{{ event.name }}</strong>
                       <div class="small text-muted event-date">{{ event.date_identified|date:"Y-m-d" }}</div>
                     </div>
-                    <span class="badge bg-{{ event.get_risk_color }} me-2 event-risk">{{ event.get_risk_rating_display }}</span>
+                    <span class="badge bg-{{ event.get_risk_color }} me-2 event-risk">
+                      {{ event.get_risk_rating_display }}
+                    </span>
                   </div>
                 </button>
               </h2>
-              <div id="collapse{{ event.id }}" class="accordion-collapse collapse" 
+              <div id="collapse{{ event.id }}" class="accordion-collapse collapse"
                    aria-labelledby="heading{{ event.id }}" data-bs-parent="#eventsAccordion">
                 <div class="accordion-body pt-2">
                   <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="text-muted small">Theme: {{ event.theme.name }}</span>
+                    <span class="text-muted small">Threat: {{ event.theme.name }}</span>
                     <a href="{% url 'view_event' event_id=event.id %}" class="btn btn-sm btn-outline-primary">
                       View Details
                     </a>
                   </div>
-                  
-                  <!-- Sources list as cards - NOW CLICKABLE -->
+
                   <h6 class="mt-3 mb-2">Sources ({{ event.sources.count }})</h6>
                   {% with sources=event.sources.all|slice:":3" %}
                   {% if sources %}
                     <div class="sources-container">
                       {% for source in sources %}
-                      <div class="card mb-2 source-card" data-source-url="{% url 'source_detail' pk=source.id %}" style="cursor: pointer;">
+                      <div class="card mb-2 source-card" data-source-url="{% url 'source_detail' pk=source.id %}">
                         <div class="card-body py-2">
                           <div class="d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center">
-                              {% if source.source_type == "PDF" %}
-                                <i class="fas fa-file-pdf text-danger me-2"></i>
-                              {% elif source.source_type == "DOC" %}
-                                <i class="fas fa-file-word text-primary me-2"></i>
-                              {% elif source.source_type == "EMAIL" %}
-                                <i class="fas fa-envelope text-info me-2"></i>
-                              {% else %}
-                                <i class="fas fa-file text-secondary me-2"></i>
-                              {% endif %}
+                              <i class="fas fa-file text-secondary me-2"></i>
                               <div>
                                 <div class="fw-medium">{{ source.name }}</div>
                                 <small class="text-muted">{{ source.source_date|date:"Y-m-d" }}</small>
@@ -180,7 +197,6 @@
                         </div>
                       </div>
                       {% endfor %}
-                      
                       {% if event.sources.count > 3 %}
                       <div class="text-center mt-2">
                         <small class="text-muted">+ {{ event.sources.count|add:"-3" }} more sources</small>
@@ -193,7 +209,7 @@
                     </div>
                   {% endif %}
                   {% endwith %}
-                  
+
                   <div class="mt-3 text-center">
                     <a href="{% url 'add_source' event_pk=event.id %}" class="btn btn-sm btn-outline-primary">
                       <i class="fas fa-plus me-1"></i> Add Source
@@ -204,7 +220,15 @@
             </div>
             {% endfor %}
           </div>
-          
+
+          <!-- Paginación Events -->
+          <div class="d-flex justify-content-between align-items-center mt-3" id="eventsPagerWrap">
+            <div class="small text-muted" id="eventsCountText"></div>
+            <nav>
+              <ul class="pagination pagination-sm mb-0" id="eventsPagination"></ul>
+            </nav>
+          </div>
+
           {% if not events %}
           <div class="text-center p-4">
             <i class="fas fa-calendar-times fa-2x text-muted mb-2"></i>
@@ -221,254 +245,228 @@
 </div>
 
 <style>
-  .accordion-button:not(.collapsed) {
-    background-color: #f8f9fa;
-    box-shadow: inset 0 -1px 0 rgba(0,0,0,.125);
-  }
-  
-  .source-card {
-    transition: all 0.2s ease;
-    border-left: 3px solid transparent;
-  }
-  
-  .source-card:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    background-color: #f8f9fa;
-    border-left-color: #007bff;
-  }
-  
-  .truncate {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  
-  .table-clickable tbody tr {
-    cursor: pointer;
-  }
-  
-  /* FIXED: Eliminar espacio blanco en tabla de Threat */
-  .col-name { width: 50%; }
-  .col-category { width: 30%; }
-  .col-risk { width: 20%; }
-  
-  /* Ocultar eventos durante la búsqueda */
-  .event-item.hidden {
-    display: none !important;
-  }
-  
-  /* Destacar resultados de búsqueda */
-  .event-item.highlight .accordion-button {
-    background-color: #fff3cd !important;
-    border-color: #ffeaa7 !important;
-  }
+  .accordion-button:not(.collapsed) { background-color:#f8f9fa; box-shadow: inset 0 -1px 0 rgba(0,0,0,.125); }
+  .truncate { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .table-clickable tbody tr { cursor:pointer; }
+  .table-fixed { table-layout:fixed; }
 
-  /* Mejor espaciado */
-  .row.mt-4 {
-    margin-top: 2rem !important;
-  }
+  .col-name { width: 42%; }
+  .col-category { width: 22%; }
+  .col-date { width: 18%; }
+  .col-risk { width: 18%; }
 
-  /* Scroll para muchos eventos */
-  #eventsAccordion {
-    max-height: 600px;
-    overflow-y: auto;
-  }
+  .event-item.hidden { display:none !important; }
+  .event-item.highlight .accordion-button { background-color:#fff3cd !important; border-color:#ffeaa7 !important; }
+  #eventsAccordion { max-height: 600px; overflow-y: auto; }
+
+  .text-purple { color:#6f42c1; }
+  table .badge { font-weight:600; }
+  .card { box-shadow:0 0.125rem 0.25rem rgba(0,0,0,.075); }
+
+  .sort-event.active { background-color:#6c757d; color:#fff; border-color:#6c757d; }
+
+  .source-card { cursor:pointer; transition:all .2s ease; }
+  .source-card:hover { transform:translateY(-2px); box-shadow:0 4px 8px rgba(0,0,0,0.12); background-color:#f8f9fa; }
+
+  /* Paginación compacta */
+  #eventsPagination .page-link { padding: .25rem .5rem; }
 </style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Código JavaScript ORIGINAL - NO MODIFICADO
+/* ===== Threats: DataTable ===== */
 $(function () {
-  // ----- DataTable para Themes (búsqueda y filtrado) -----
-  $('#themesTable').DataTable({
+  const themesDT = $('#themesTable').DataTable({
     autoWidth: false,
     columnDefs: [
-      { targets: 0, width: '50%', className: 'col-name' },
-      { targets: 1, width: '30%', className: 'col-category' },
-      { targets: 2, width: '20%', className: 'col-risk' }
+      { targets: 0, width: '42%', className: 'col-name' },
+      { targets: 1, width: '22%', className: 'col-category' },
+      { targets: 2, width: '18%', className: 'col-date' },
+      { targets: 3, width: '18%', className: 'col-risk' }
     ],
-    order: [[2, 'asc']],
+    order: [[2, 'desc']],
     pageLength: 5,
     language: {
-      emptyTable: 'No themes available',
-      info: 'Showing _START_ to _END_ of _TOTAL_ themes',
-      infoEmpty: 'Showing 0 to 0 of 0 themes',
-      infoFiltered: '(filtered from _MAX_ total themes)',
-      lengthMenu: 'Show _MENU_ themes',
-      search: 'Search themes:',
+      emptyTable: 'No threats available',
+      info: 'Showing _START_ to _END_ of _TOTAL_ threats',
+      infoEmpty: 'Showing 0 to 0 of 0 threats',
+      infoFiltered: '(filtered from _MAX_ total threats)',
+      lengthMenu: 'Show _MENU_ threats',
+      search: 'Search threats:',
       paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Previous' }
     }
   });
 
-  // ----- Búsqueda y Filtrado para Events -----
+  $('#themesTable').on('click', 'tbody tr', function (e) {
+    if ($(e.target).closest('a,button,.btn').length) return;
+    const href = $(this).attr('data-href');
+    if (href) window.location = href;
+  });
+});
+
+/* ===== Events: búsqueda, orden y paginación ===== */
+document.addEventListener('DOMContentLoaded', function () {
   const eventSearch = document.getElementById('eventSearch');
-  const eventItems = document.querySelectorAll('.event-item');
+  const eventItems  = Array.from(document.querySelectorAll('.event-item'));
+  const eventsAccordion = document.getElementById('eventsAccordion');
+  const showSelect = document.getElementById('eventShowCount');
+  const pager = document.getElementById('eventsPagination');
+  const countText = document.getElementById('eventsCountText');
+
   let currentSort = 'name';
   let sortAscending = true;
+  let currentPage = 1;
 
-  // Función de búsqueda
-  function searchEvents() {
-    const searchTerm = eventSearch.value.toLowerCase().trim();
-    
-    eventItems.forEach(item => {
-      const eventName = item.getAttribute('data-name');
-      const eventDate = item.getAttribute('data-date');
-      const eventRisk = item.getAttribute('data-risk');
-      const eventText = item.textContent.toLowerCase();
-      
-      if (searchTerm === '' || eventName.includes(searchTerm) || eventText.includes(searchTerm)) {
-        item.classList.remove('hidden');
-        if (searchTerm !== '') {
-          item.classList.add('highlight');
-        } else {
-          item.classList.remove('highlight');
-        }
-      } else {
-        item.classList.add('hidden');
-        item.classList.remove('highlight');
-      }
-    });
+  function getPageSize() {
+    const v = showSelect.value;
+    return v === 'all' ? Infinity : parseInt(v, 10);
   }
 
-  // Función de ordenamiento
-  function sortEvents(sortBy, ascending) {
-    const eventsArray = Array.from(eventItems).filter(item => !item.classList.contains('hidden'));
-    
-    eventsArray.sort((a, b) => {
-      let aValue, bValue;
-      
-      switch(sortBy) {
-        case 'name':
-          aValue = a.getAttribute('data-name');
-          bValue = b.getAttribute('data-name');
-          break;
-        case 'date':
-          aValue = a.getAttribute('data-date');
-          bValue = b.getAttribute('data-date');
-          break;
-        case 'risk':
-          // Ordenar por nivel de riesgo (critical > high > moderate > low)
-          const riskOrder = {critical: 0, high: 1, moderate: 2, low: 3};
-          aValue = riskOrder[a.getAttribute('data-risk')] || 4;
-          bValue = riskOrder[b.getAttribute('data-risk')] || 4;
-          break;
-        default:
-          aValue = a.getAttribute('data-name');
-          bValue = b.getAttribute('data-name');
-      }
-      
-      if (aValue < bValue) return ascending ? -1 : 1;
-      if (aValue > bValue) return ascending ? 1 : -1;
-      return 0;
-    });
-    
-    // Reordenar en el DOM
-    const eventsAccordion = document.getElementById('eventsAccordion');
-    eventsArray.forEach(item => {
-      eventsAccordion.appendChild(item);
-    });
+  function visibleItems() {
+    return eventItems.filter(el => !el.classList.contains('filtered-out'));
   }
 
-  // Event listeners
-  eventSearch.addEventListener('input', searchEvents);
-  
-  document.querySelectorAll('.sort-event').forEach(button => {
-    button.addEventListener('click', function() {
-      const sortBy = this.getAttribute('data-sort');
-      
-      if (sortBy === currentSort) {
-        sortAscending = !sortAscending;
-      } else {
-        currentSort = sortBy;
-        sortAscending = true;
-      }
-      
-      // Update button styles
-      document.querySelectorAll('.sort-event').forEach(btn => {
-        btn.classList.remove('active');
-      });
-      this.classList.add('active');
-      
-      sortEvents(sortBy, sortAscending);
-    });
-  });
-
-  // ----- Filas clicables -----
-  function makeTableClickable(tableSelector) {
-    const $table = $(tableSelector);
-    $table.on('click', 'tbody tr', function (e) {
-      if ($(e.target).closest('a,button,.btn').length) return;
-      const href = $(this).attr('data-href');
-      if (href) window.location = href;
-    });
-  }
-  makeTableClickable('#themesTable');
-});
-
-// ===== NUEVO CÓDIGO PARA TARJETAS DE FUENTES CLICKEABLES =====
-// Este código está SEPARADO y no afecta el funcionamiento existente
-document.addEventListener('DOMContentLoaded', function() {
-  // Función para manejar clics en tarjetas de fuente
-  function handleSourceCardClick(e) {
-    // Prevenir la acción si se hace clic en elementos interactivos
-    const interactiveElements = ['A', 'BUTTON', 'I', 'SPAN'];
-    const clickedElement = e.target;
-    
-    if (interactiveElements.includes(clickedElement.tagName) || 
-        clickedElement.closest('a, button, .badge')) {
+  function renderPagination(total, pageSize) {
+    // ocultar si all o sin necesidad
+    if (!isFinite(pageSize) || total <= pageSize) {
+      pager.innerHTML = '';
+      countText.textContent = total ? `Showing 1–${Math.min(total, pageSize)} of ${total}` : 'No events';
       return;
     }
-    
-    // Obtener la URL de la tarjeta de fuente
-    const sourceCard = e.currentTarget;
-    const sourceUrl = sourceCard.getAttribute('data-source-url');
-    
-    if (sourceUrl) {
-      window.location.href = sourceUrl;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    currentPage = Math.min(currentPage, totalPages);
+
+    const makePage = (label, page, disabled=false, active=false) => (
+      `<li class="page-item ${disabled?'disabled':''} ${active?'active':''}">
+         <a class="page-link" href="#" data-page="${page}">${label}</a>
+       </li>`
+    );
+
+    let html = '';
+    html += makePage('«', currentPage-1, currentPage===1);
+    for (let p=1; p<=totalPages; p++) {
+      if (p===1 || p===totalPages || Math.abs(p-currentPage)<=1) {
+        html += makePage(p, p, false, p===currentPage);
+      } else if (Math.abs(p-currentPage)===2) {
+        html += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+      }
     }
+    html += makePage('»', currentPage+1, currentPage===totalPages);
+    pager.innerHTML = html;
+
+    const start = (currentPage-1)*pageSize + 1;
+    const end = Math.min(currentPage*pageSize, total);
+    countText.textContent = `Showing ${start}–${end} of ${total}`;
   }
-  
-  // Añadir event listeners a todas las tarjetas de fuente
-  const sourceCards = document.querySelectorAll('.source-card[data-source-url]');
-  sourceCards.forEach(card => {
-    card.addEventListener('click', handleSourceCardClick);
-    card.style.cursor = 'pointer'; // Hacer obvio que es clickeable
+
+  function applyShowPage() {
+    const pageSize = getPageSize();
+    const vis = visibleItems();
+    const total = vis.length;
+
+    // toggle por página
+    if (!isFinite(pageSize)) {
+      vis.forEach(el => el.classList.remove('hidden'));
+      renderPagination(total, pageSize);
+      return;
+    }
+    const startIdx = (currentPage-1)*pageSize;
+    const endIdx = startIdx + pageSize;
+
+    vis.forEach((el, idx) => {
+      if (idx >= startIdx && idx < endIdx) el.classList.remove('hidden');
+      else el.classList.add('hidden');
+    });
+
+    renderPagination(total, pageSize);
+  }
+
+  function searchEvents() {
+    const term = (eventSearch.value || '').toLowerCase().trim();
+    eventItems.forEach(item => {
+      const text = item.textContent.toLowerCase();
+      const name = item.getAttribute('data-name') || '';
+      const match = !term || name.includes(term) || text.includes(term);
+      item.classList.toggle('filtered-out', !match);
+      item.classList.toggle('highlight', !!term && match);
+    });
+    currentPage = 1;
+    applyShowPage();
+  }
+
+  function sortEvents(sortBy, ascending) {
+    const items = visibleItems().slice();
+    items.sort((a, b) => {
+      let av, bv;
+      if (sortBy === 'name') {
+        av = a.getAttribute('data-name') || '';
+        bv = b.getAttribute('data-name') || '';
+      } else if (sortBy === 'date') {
+        av = a.getAttribute('data-date') || '00000000';
+        bv = b.getAttribute('data-date') || '00000000';
+      } else if (sortBy === 'risk') {
+        const order = { critical: 0, high: 1, medium: 2, low: 3 };
+        av = order[a.getAttribute('data-risk')] ?? 9;
+        bv = order[b.getAttribute('data-risk')] ?? 9;
+      } else {
+        av = a.getAttribute('data-name') || '';
+        bv = b.getAttribute('data-name') || '';
+      }
+      if (av < bv) return ascending ? -1 : 1;
+      if (av > bv) return ascending ? 1 : -1;
+      return 0;
+    });
+    items.forEach(it => eventsAccordion.appendChild(it));
+    currentPage = 1;
+    applyShowPage();
+  }
+
+  // listeners
+  eventSearch.addEventListener('input', () => { searchEvents(); sortEvents(currentSort, sortAscending); });
+
+  document.querySelectorAll('.sort-event').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const sortBy = this.getAttribute('data-sort');
+      if (sortBy === currentSort) sortAscending = !sortAscending;
+      else { currentSort = sortBy; sortAscending = true; }
+      document.querySelectorAll('.sort-event').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      sortEvents(currentSort, sortAscending);
+    });
   });
-  
-  console.log('Source cards clickable functionality loaded. Found', sourceCards.length, 'source cards.');
+
+  showSelect.addEventListener('change', () => {
+    currentPage = 1;
+    applyShowPage();
+  });
+
+  document.getElementById('eventsPagination').addEventListener('click', function(e){
+    const a = e.target.closest('a.page-link');
+    if (!a) return;
+    e.preventDefault();
+    const page = parseInt(a.dataset.page, 10);
+    if (!isNaN(page)) {
+      currentPage = Math.max(1, page);
+      applyShowPage();
+    }
+  });
+
+  // Inicial
+  searchEvents();               // marca filtered-out según búsqueda (vacía)
+  sortEvents(currentSort, true); // orden inicial por name asc
+});
+
+/* Source cards clickable */
+document.addEventListener('DOMContentLoaded', function(){
+  const cards = document.querySelectorAll('.source-card[data-source-url]');
+  cards.forEach(card=>{
+    card.addEventListener('click', (e)=>{
+      if (e.target.closest('a, button, .badge, i')) return;
+      const url = card.getAttribute('data-source-url');
+      if (url) window.location.href = url;
+    });
+  });
 });
 </script>
-
-<style>
-.text-purple { color: #6f42c1; }
-.table-clickable tbody tr { cursor: pointer; }
-.table-fixed { table-layout: fixed; }
-.truncate { display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#themesTable .col-name { width: 50%; }
-#themesTable .col-category { width: 30%; }
-#themesTable .col-risk { width: 20%; }
-table .badge { font-weight: 600; }
-.card { box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075); }
-
-/* Botones de ordenamiento activos */
-.sort-event.active {
-  background-color: #6c757d;
-  color: white;
-  border-color: #6c757d;
-}
-
-/* Mejorar la apariencia de las tarjetas de fuente */
-.source-card {
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.source-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.12);
-  background-color: #f8f9fa;
-}
-</style>
 {% endblock %}

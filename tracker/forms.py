@@ -3,10 +3,11 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils.safestring import mark_safe
-from datetime import date
+from datetime import date, datetime, time
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from urllib.parse import urlparse
+
 
 ALLOWED_FILE_EXTS = {'.pdf', '.doc', '.docx'}
 
@@ -52,6 +53,26 @@ class CategoryForm(forms.ModelForm):
         }
 
 class ThemeForm(forms.ModelForm):
+    identified_at = forms.DateField(
+        required=True,
+        widget=forms.DateInput(
+            attrs={
+                "type": "date",
+                "class": "form-control",
+                "placeholder": "Select a date",
+                "id": "id_identified_at",
+            },
+            format="%Y-%m-%d",
+        ),
+        input_formats=["%Y-%m-%d"],
+        label="Identified date",
+        help_text="Pick a date (today or past).",
+        error_messages={
+            "required": "Please select a date.",
+            "invalid": "Enter a valid date.",
+        },
+    )
+    
     category = forms.ModelChoiceField(
         queryset=Category.objects.all().order_by('name'),
         widget=forms.Select(attrs={
@@ -67,7 +88,7 @@ class ThemeForm(forms.ModelForm):
     )
     class Meta:
         model = Theme
-        fields = ['category', 'name', 'risk_rating', 'onset_timeline']
+        fields = ['category', 'name', 'risk_rating', 'onset_timeline', 'identified_at']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'risk_rating': forms.Select(attrs={'class': 'form-control'}),
@@ -79,6 +100,21 @@ class ThemeForm(forms.ModelForm):
         for field_name, field in self.fields.items():
             field.widget.attrs['class'] = 'form-control'
 
+        inst = getattr(self, "instance", None)
+        if inst and getattr(inst, "pk", None) and getattr(inst, "identified_at", None):
+            local_dt = timezone.localtime(inst.identified_at)
+            self.initial["identified_at"] = local_dt.date().strftime("%Y-%m-%d")
+            
+    def clean_identified_at(self):
+        d = self.cleaned_data.get("identified_at")
+        if not d:
+            return d
+        naive_dt = datetime.combine(d, time.min)
+        aware_dt = timezone.make_aware(naive_dt, timezone.get_current_timezone())
+        if aware_dt.date() > timezone.localdate():
+            raise forms.ValidationError("Date must be today or in the past.")
+        return aware_dt   
+    
 class EventForm(forms.ModelForm):
     name = forms.CharField(
         max_length=30,
@@ -96,12 +132,21 @@ class EventForm(forms.ModelForm):
     )
     
     date_identified = forms.DateField(
-        initial=timezone.now().date,
-        widget=forms.DateInput(attrs={
-            'type': 'date',
-            'class': 'form-control'
-        }),
-        required=True
+        required=True,
+        widget=forms.DateInput(
+            attrs={
+                'type': 'date',
+                'class': 'form-control'
+            },
+            format='%Y-%m-%d',
+        ),
+        input_formats=['%Y-%m-%d'],
+        label="Date Identified",
+        help_text="Pick a date (today or past).",
+        error_messages={
+            "required": "Please select a date.",
+            "invalid": "Enter a valid date.",
+        },
     )
     
     risk_rating = forms.ChoiceField(
@@ -166,9 +211,7 @@ class EventForm(forms.ModelForm):
             'risk_taxonomy_lv3', 'status', 'control_in_place', 'risk_rating',
         ]
 
-    # ----------------- Helpers internos para armar choices válidos -----------------
     def _valid_lv2_from(self, lv1_list):
-        """Returna choices válidos de LV2 según LV1 seleccionado, sin duplicados."""
         choices = []
         for lv1 in (lv1_list or []):
             choices.extend(RISK_TAXONOMY_LV2.get(lv1, []))
@@ -180,7 +223,6 @@ class EventForm(forms.ModelForm):
         return result
 
     def _valid_lv3_from(self, lv2_list):
-        """Returna choices válidos de LV3 según LV2 seleccionado, sin duplicados."""
         choices = []
         for lv2 in (lv2_list or []):
             choices.extend(RISK_TAXONOMY_LV3.get(lv2, []))
@@ -200,26 +242,21 @@ class EventForm(forms.ModelForm):
             self.initial['theme'] = initial_theme
             self.fields['theme'].widget = forms.HiddenInput()
         
-        # Set initial risk rating from theme if creating new event
         if initial_theme and not self.instance.pk:
             self.initial['risk_rating'] = initial_theme.risk_rating
 
-        # --- POBLADO DINÁMICO DE CHOICES (clave para que Django valide correctamente) ---
         if self.is_bound:
-            # En POST: usar las selecciones enviadas por el usuario
             lv1_selected = self.data.getlist('risk_taxonomy_lv1')
             self.fields['risk_taxonomy_lv2'].choices = self._valid_lv2_from(lv1_selected)
 
             lv2_selected = self.data.getlist('risk_taxonomy_lv2')
             self.fields['risk_taxonomy_lv3'].choices = self._valid_lv3_from(lv2_selected)
         else:
-            # En GET/edición inicial: usar initial o instance
             lv1_initial = self.initial.get('risk_taxonomy_lv1', [])
             self.fields['risk_taxonomy_lv2'].choices = self._valid_lv2_from(lv1_initial)
 
             lv2_initial = self.initial.get('risk_taxonomy_lv2', [])
             self.fields['risk_taxonomy_lv3'].choices = self._valid_lv3_from(lv2_initial)
-        # ----------------------------------------------------------------------------------
 
     def clean(self):
         cleaned_data = super().clean()
@@ -278,7 +315,6 @@ class EventForm(forms.ModelForm):
                                f"Invalid Level 3 options: {', '.join(invalid_lv3)}. "
                                f"Valid options for selected Level 2: {', '.join(valid_lv3)}")
 
-    # Mantengo estos métodos por compatibilidad (si los llamas en otros lados):
     def get_valid_lv2_choices(self):
         lv1_selections = self.initial.get('risk_taxonomy_lv1', [])
         return self._valid_lv2_from(lv1_selections)
@@ -287,7 +323,16 @@ class EventForm(forms.ModelForm):
         lv2_selections = self.initial.get('risk_taxonomy_lv2', [])
         return self._valid_lv3_from(lv2_selections)
 
-    
+    def clean_date_identified(self):
+        d = self.cleaned_data.get("date_identified")
+        if not d:
+            return d
+        from datetime import datetime, time
+        naive_dt = datetime.combine(d, time.min)
+        aware_dt = timezone.make_aware(naive_dt, timezone.get_current_timezone())
+        if aware_dt.date() > timezone.localdate():
+            raise forms.ValidationError("Date must be today or in the past.")
+        return aware_dt
 
 _URL_VALIDATOR = URLValidator(schemes=["http", "https"])
 
@@ -305,19 +350,24 @@ from .models import Source
 from urllib.parse import urlparse
 
 class SourceForm(forms.ModelForm):
-    # Fecha/hora con control HTML5 y formato sin segundos
-    source_date = forms.DateTimeField(
+    source_date = forms.DateField(
         required=True,
-        widget=forms.DateTimeInput(
+        widget=forms.DateInput(
             attrs={
-                "type": "datetime-local",
+                "type": "date",
                 "class": "form-control",
-                "placeholder": "Selecciona fecha y hora",
+                "placeholder": "Select a date",
                 "id": "id_source_date",
             },
-            format="%Y-%m-%dT%H:%M",
+            format="%Y-%m-%d",
         ),
-        input_formats=["%Y-%m-%dT%H:%M"],
+        input_formats=["%Y-%m-%d"],
+        label="Source date",
+        help_text="Pick a date (today or past).",
+        error_messages={
+            "required": "Please select a date.",
+            "invalid": "Enter a valid date.",
+        },
     )
 
     class Meta:
@@ -339,23 +389,19 @@ class SourceForm(forms.ModelForm):
             "link_or_file": forms.URLInput(attrs={"class": "form-control", "id": "id_link_or_file"}),
             "summary": forms.Textarea(attrs={"class": "form-control", "rows": 6}),
             "potential_impact_notes": forms.Textarea(attrs={"class": "form-control", "rows": 6}),
-            # potential_impact y source_type pueden quedarse con sus widgets por defecto (select/hidden)
         }
 
-    # --- Normaliza el valor al entrar al form para instancias existentes ---
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         inst = getattr(self, "instance", None)
         if inst and getattr(inst, "pk", None) and getattr(inst, "source_date", None):
-            # Muestra el valor en hora local con el formato del widget datetime-local
             local_dt = timezone.localtime(inst.source_date)
-            self.initial["source_date"] = local_dt.strftime("%Y-%m-%dT%H:%M")
+            self.initial["source_date"] = local_dt.date().strftime("%Y-%m-%d")
 
-    # --- Validación: URL o mailto válido (si viene) ---
     def clean_link_or_file(self):
         val = (self.cleaned_data.get("link_or_file") or "").strip()
         if not val:
-            return val  # opcional
+            return val  
 
         if val.lower().startswith("mailto:"):
             if "@" not in val[7:]:
@@ -367,41 +413,28 @@ class SourceForm(forms.ModelForm):
             raise forms.ValidationError("Enter a valid URL (http/https) or a mailto: address.")
         return val
 
-    # --- Validación: fecha/hora no puede ser futuro; vuelve aware si hace falta ---
     def clean_source_date(self):
-        dt = self.cleaned_data.get("source_date")
-        if not dt:
-            return dt
-        if timezone.is_naive(dt):
-            dt = timezone.make_aware(dt, timezone.get_current_timezone())
-        if dt > timezone.now():
-            raise forms.ValidationError("La fecha/hora no puede ser en el futuro.")
-        return dt
+        d = self.cleaned_data.get("source_date")
+        if not d:
+            return d
+        naive_dt = datetime.combine(d, time.min)
+        aware_dt = timezone.make_aware(naive_dt, timezone.get_current_timezone())
+        if aware_dt.date() > timezone.localdate():
+            raise forms.ValidationError("Date must be today or in the past.")
+        return aware_dt
 
-    # --- Limpieza general: permitir que 'extra_files' (fuera del form) cuente como adjunto ---
     def clean(self):
         cleaned = super().clean()
 
-        # Estos dos son los campos del form:
         has_main_link = bool((cleaned.get("link_or_file") or "").strip())
         has_main_file = bool(cleaned.get("file_upload"))
 
-        # Esto viene por request.FILES pero fuera de los fields del form:
         extra_files = []
         if hasattr(self.files, "getlist"):
             try:
-                # Soportamos múltiples inputs llamados 'extra_files'
-                # (la vista ya usa request.FILES.lists(), aquí sólo una ayuda mínima)
                 extra_files = self.files.getlist("extra_files")
             except Exception:
                 extra_files = []
-
-        # Si tu lógica en la vista exige al menos un adjunto, aquí NO bloqueamos:
-        # dejamos que la vista haga el check definitivo (así no rompemos nada).
-        # Pero si quisieras forzar desde el form, descomenta lo de abajo.
-        #
-        # if not (has_main_link or has_main_file or extra_files):
-        #     raise forms.ValidationError("Please add at least one link or file before saving.")
 
         return cleaned
     

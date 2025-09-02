@@ -2,234 +2,191 @@
 
 {% block content %}
 <div class="container">
-    <!-- Dynamic title -->
-    <h2 class="my-4">
-        {% if category %}
-        <i class="fas fa-tag me-2"></i>Threat: {{ category.name }}
-        {% else %}
-        <i class="fas fa-list-ul me-2"></i>All Threat
-        {% endif %}
-    </h2>
+  <h2 class="my-4">
+    {% if category %}
+      <i class="fas fa-tag me-2"></i>Threat: {{ category.name }}
+    {% else %}
+      <i class="fas fa-list-ul me-2"></i>All Threat
+    {% endif %}
+  </h2>
 
-    <!-- Wrapper card -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Threat List</h5>
-                {# If we are inside a category, pass ?category=<id> to preselect on Add Theme #}
-                <a href="{% url 'add_theme' %}{% if category %}?category={{ category.id }}{% endif %}" class="btn btn-light btn-sm">
-                    <i class="fas fa-plus me-1"></i> Add Threat
-                </a>
-            </div>
-        </div>
-        
-        <div class="card-body">
-            <!-- Search bar -->
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <form method="GET" action="" class="d-flex gap-2">
-                        <div class="input-group">
-                            <input
-                              type="text"
-                              id="searchInput"
-                              name="q"
-                              class="form-control"
-                              placeholder="Search Threat..."
-                              value="{{ request.GET.q }}">
-                            <button type="submit" class="btn btn-outline-secondary" id="searchButton">
-                                <i id="searchIcon" class="fas fa-search"></i>
-                                <span id="searchSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Themes table -->
-            <div class="table-responsive" id="themeList">
-                <table class="table table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Name</th>
-                            <th>Category</th>
-                            <th>Risk</th>
-                            <th style="width: 160px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="themeTbody">
-                        {% for theme in themes %}
-                        <tr class="theme-item">
-                            <td>
-                                <a href="{% url 'view_theme' pk=theme.id %}" class="text-decoration-none">
-                                    {{ theme.name }}
-                                </a>
-                            </td>
-                            <td>{{ theme.category.name }}</td>
-                            <td>
-                                <span class="badge bg-{{ theme.get_risk_color }}">
-                                    {{ theme.get_risk_rating_display }}
-                                </span>
-                            </td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{% url 'edit_theme' theme.id %}" class="btn btn-outline-warning" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-
-                                    {# IMPORTANT: use positional arg to match path('themes/<int:theme_pk>/events/add/', ...) #}
-                                    <a href="{% url 'add_event' theme.id %}" class="btn btn-outline-primary" title="Add Event">
-                                        <i class="fas fa-plus"></i> Event
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="4" class="text-center py-4">
-                                No Threat found.
-                                <a href="{% url 'add_theme' %}{% if category %}?category={{ category.id }}{% endif %}" class="ms-2">Create one?</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-
-                        <!-- Row shown when client-side filter has no results -->
-                        <tr id="noResults" class="d-none">
-                            <td colspan="4" class="text-center py-4">No Threat match your search.</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Pagination -->
-        {% if is_paginated %}
-        <div class="card-footer bg-white">
-            <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-center mb-0">
-                    {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
-                            Previous
-                        </a>
-                    </li>
-                    {% endif %}
-                    
-                    {% for num in page_obj.paginator.page_range %}
-                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-                        <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
-                            {{ num }}
-                        </a>
-                    </li>
-                    {% endfor %}
-                    
-                    {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
-                            Next
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </div>
-        {% endif %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Threat List</h5>
+        <a href="{% url 'add_theme' %}{% if category %}?category={{ category.id }}{% endif %}" class="btn btn-light btn-sm">
+          <i class="fas fa-plus me-1"></i> Add Threat
+        </a>
+      </div>
     </div>
+
+    <div class="card-body">
+      <div class="row g-2 align-items-center mb-3">
+        <div class="col-md-6">
+          <div class="input-group">
+            <input
+              type="text"
+              id="searchInput"
+              class="form-control"
+              placeholder="Search Threat..."
+              value="{{ request.GET.q }}">
+            <button type="button" class="btn btn-outline-secondary" id="searchButton">
+              <i id="searchIcon" class="fas fa-search"></i>
+              <span id="searchSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <div class="btn-group btn-group-sm" role="group" aria-label="Sort by hidden date">
+            <button class="btn btn-outline-secondary" id="btnNewest" type="button">
+              <i class="fa-solid fa-arrow-down-1-9 me-1"></i> Newest
+            </button>
+            <button class="btn btn-outline-secondary" id="btnOldest" type="button">
+              <i class="fa-solid fa-arrow-up-1-9 me-1"></i> Oldest
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table id="themeTable" class="table table-hover align-middle w-100">
+          <thead class="table-light">
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Risk</th>
+              <th>Onset timeline</th>
+              <th style="width:160px;">Actions</th>
+              <th class="d-none">_ts</th> {# timestamp oculto para ordenar por fecha #}
+            </tr>
+          </thead>
+          <tbody>
+            {% for theme in themes %}
+            <tr>
+              <td>
+                <a href="{% url 'view_theme' pk=theme.id %}" class="text-decoration-none">{{ theme.name }}</a>
+              </td>
+              <td>{{ theme.category.name }}</td>
+
+              {# Orden semántico de Risk: usa data-order con risk_order y muestra el badge #}
+              <td data-order="{{ theme.risk_order|default:999 }}">
+                <span class="badge bg-{{ theme.get_risk_color }}">{{ theme.get_risk_rating_display }}</span>
+              </td>
+
+              {# Orden semántico de Onset: usa data-order con onset_order y muestra texto #}
+              <td data-order="{{ theme.onset_order|default:999 }}">
+                {{ theme.get_onset_timeline_display }}
+              </td>
+
+              <td>
+                <div class="btn-group btn-group-sm">
+                  <a href="{% url 'edit_theme' theme.id %}" class="btn btn-outline-warning" title="Edit">
+                    <i class="fas fa-edit"></i>
+                  </a>
+                  <a href="{% url 'add_event' theme.id %}" class="btn btn-outline-primary" title="Add Event">
+                    <i class="fas fa-plus"></i> Event
+                  </a>
+                </div>
+              </td>
+
+              {# Epoch del último Event/Source (oculto) #}
+              <td class="d-none">{{ theme.sort_date|date:'U'|default:'-1' }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="text-center py-4">
+                No Threat found.
+                <a href="{% url 'add_theme' %}{% if category %}?category={{ category.id }}{% endif %}" class="ms-2">Create one?</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
-<style>
-    .search-loading { position: relative; }
-    .search-loading::after {
-        content: "";
-        position: absolute;
-        top: 0; right: 40px;
-        width: 20px; height: 20px;
-        border: 2px solid #f3f3f3;
-        border-top: 2px solid #3498db;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        display: none;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-</style>
+{# Incluimos DataTables (CSS/JS) directamente aquí para asegurar carga #}
+<link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-1.13.8/datatables.min.css">
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/v/bs5/dt-1.13.8/datatables.min.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput   = document.getElementById('searchInput');
-    const searchButton  = document.getElementById('searchButton');
-    const searchIcon    = document.getElementById('searchIcon');
-    const searchSpinner = document.getElementById('searchSpinner');
-    const themeList     = document.getElementById('themeList');
-    const tbody         = document.getElementById('themeTbody');
-    const noResultsRow  = document.getElementById('noResults');
+document.addEventListener('DOMContentLoaded', function () {
+  const searchInput   = document.getElementById('searchInput');
+  const searchButton  = document.getElementById('searchButton');
+  const searchIcon    = document.getElementById('searchIcon');
+  const searchSpinner = document.getElementById('searchSpinner');
 
-    if (!searchInput || !searchButton) return;
+  // Índices de columnas:
+  // 0: Name, 1: Category, 2: Risk(data-order), 3: Onset(data-order), 4: Actions, 5: _ts (oculta)
+  const COL_TS      = 5;
+  const COL_ACTIONS = 4;
 
-    let searchTimeout;
-
-    function showLoading(show) {
-        if (!searchIcon || !searchSpinner || !themeList) return;
-        if (show) {
-            searchIcon.classList.add('d-none');
-            searchSpinner.classList.remove('d-none');
-            searchButton.disabled = true;
-            themeList.classList.add('opacity-50');
-        } else {
-            searchIcon.classList.remove('d-none');
-            searchSpinner.classList.add('d-none');
-            searchButton.disabled = false;
-            themeList.classList.remove('opacity-50');
-        }
+  const table = $('#themeTable').DataTable({
+    paging: true,
+    pageLength: 25,
+    lengthMenu: [10, 25, 50, 100],
+    order: [[COL_TS, 'desc']],   // default: más recientes primero
+    columnDefs: [
+      { targets: [COL_ACTIONS], orderable: false, searchable: false },
+      { targets: [COL_TS], visible: false, searchable: false } // columna timestamp oculta
+    ],
+    language: {
+      search: "Filter:",
+      lengthMenu: "Show _MENU_",
+      info: "Showing _START_ to _END_ of _TOTAL_ items",
+      infoEmpty: "No items",
+      infoFiltered: "(filtered from _MAX_ total)",
+      zeroRecords: "No matching items found",
+      paginate: { first: "First", last: "Last", next: "Next", previous: "Prev" }
     }
+  });
 
-    function filterRows(term) {
-        const items = tbody.querySelectorAll('tr.theme-item');
-        let hasResults = false;
-        const needle = term.trim().toLowerCase();
-
-        items.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            const match = !needle || text.includes(needle);
-            row.style.display = match ? '' : 'none';
-            if (match) hasResults = true;
-        });
-
-        if (noResultsRow) {
-            noResultsRow.classList.toggle('d-none', hasResults);
-        }
+  function showLoading(show) {
+    if (!searchIcon || !searchSpinner) return;
+    if (show) {
+      searchIcon.classList.add('d-none');
+      searchSpinner.classList.remove('d-none');
+    } else {
+      searchIcon.classList.remove('d-none');
+      searchSpinner.classList.add('d-none');
     }
+  }
 
-    function updateURL(term) {
-        const currentUrl = new URL(window.location.href);
-        if (term) currentUrl.searchParams.set('q', term);
-        else currentUrl.searchParams.delete('q');
-        history.replaceState(null, '', currentUrl.toString());
-    }
+  function performSearch() {
+    showLoading(true);
+    const val = (searchInput && searchInput.value) ? searchInput.value : '';
+    table.search(val).draw();
+    showLoading(false);
+  }
 
-    function performSearch() {
-        showLoading(true);
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            const val = searchInput.value || '';
-            updateURL(val);
-            filterRows(val);
-            showLoading(false);
-        }, 400);
-    }
-
-    // Listeners
-    searchInput.addEventListener('input', performSearch);
-    searchButton.addEventListener('click', function(e){
-        e.preventDefault(); // avoid full submit
-        performSearch();
+  // Búsqueda instantánea con un debounce corto
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchInput._t);
+      searchInput._t = setTimeout(performSearch, 120);
     });
+  }
+  if (searchButton) {
+    searchButton.addEventListener('click', (e) => { e.preventDefault(); performSearch(); });
+  }
 
-    // Initial filter if ?q= is present
-    const urlParams = new URLSearchParams(window.location.search);
-    const initial = urlParams.get('q') || '';
-    if (initial) {
-        searchInput.value = initial;
-        filterRows(initial);
-    }
+  // Botones de orden por fecha oculta
+  const btnNewest = document.getElementById('btnNewest');
+  const btnOldest = document.getElementById('btnOldest');
+  if (btnNewest) btnNewest.addEventListener('click', () => table.order([COL_TS, 'desc']).draw());
+  if (btnOldest) btnOldest.addEventListener('click', () => table.order([COL_TS, 'asc']).draw());
+
+  // Si venía ?q= en la URL, aplicarlo de entrada
+  const params = new URLSearchParams(window.location.search);
+  const initialQ = params.get('q') || '';
+  if (initialQ && searchInput) {
+    searchInput.value = initialQ;
+    table.search(initialQ).draw();
+  }
 });
 </script>

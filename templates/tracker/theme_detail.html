@@ -41,7 +41,7 @@
               <span class="badge bg-{{ theme.get_risk_color }} p-2">
                 <i class="fas
                   {% if theme.risk_rating == 'low' %}fa-arrow-down
-                  {% elif theme.risk_rating == 'moderate' %}fa-equals
+                  {% elif theme.risk_rating == 'medium' %}fa-equals
                   {% elif theme.risk_rating == 'high' %}fa-arrow-up
                   {% elif theme.risk_rating == 'critical' %}fa-skull
                   {% endif %} me-1"></i>

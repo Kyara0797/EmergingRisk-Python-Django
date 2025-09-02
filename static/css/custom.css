@@ -12,7 +12,7 @@
     color: red;
 }
 
-/* Estilos para las tarjetas de categoría */
+
 .hover-shadow {
     transition: all 0.3s ease;
 }
@@ -26,28 +26,23 @@
     color: #6f42c1;
 }
 
-/* Espaciado y alineación mejorados */
 .card-body.p-3 {
     padding: 1.5rem !important;
 }
 
-/* Tamaño consistente para todos los iconos */
 .fa-2x {
     font-size: 1.75em;
 }
 
-/* Margen inferior para separar las filas */
 .g-4 > * {
     margin-bottom: 1.5rem;
 }
 
-/* Estilo para el botón */
 .btn-outline-primary {
     border-width: 2px;
     font-weight: 500;
 }
 
-/* Personalización de badges de riesgo */
 .badge-risk-critical {
     background-color: #dc3545; /* Rojo (Critical) */
     color: white;

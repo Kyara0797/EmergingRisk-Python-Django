@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='event',
             name='risk_rating',
-            field=models.CharField(choices=[('low', 'Low'), ('moderate', 'Moderate'), ('high', 'High'), ('critical', 'Critical')], default='moderate', max_length=20),
+            field=models.CharField(choices=[('low', 'Low'), ('medium', 'Medium'), ('high', 'High'), ('critical', 'Critical')], default='moderate', max_length=20),
             preserve_default=False,
         ),
         migrations.AlterField(
