@@ -317,7 +317,9 @@ from django import forms
 from .models import Source
 from urllib.parse import urlparse
 
+
 class SourceForm(forms.ModelForm):
+    # Campo visible como fecha (tu lógica actual se conserva)
     source_date = forms.DateField(
         required=True,
         widget=forms.DateInput(
@@ -338,6 +340,9 @@ class SourceForm(forms.ModelForm):
         },
     )
 
+    # Mantenemos source_type en el form pero oculto; lo calculamos en clean()
+    source_type = forms.CharField(widget=forms.HiddenInput(), required=False)
+
     class Meta:
         model = Source
         fields = [
@@ -347,7 +352,7 @@ class SourceForm(forms.ModelForm):
             "link_or_file",
             "file_upload",
             "summary",
-            "source_type",
+            "source_type",              # <- permanece en fields
             "potential_impact",
             "potential_impact_notes",
         ]
@@ -363,13 +368,20 @@ class SourceForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         inst = getattr(self, "instance", None)
         if inst and getattr(inst, "pk", None) and getattr(inst, "source_date", None):
-            local_dt = timezone.localtime(inst.source_date)
-            self.initial["source_date"] = local_dt.date().strftime("%Y-%m-%d")
+            sd = inst.source_date
+            # si es datetime → pásalo a date
+            if isinstance(sd, datetime):
+                try:
+                    sd = timezone.localtime(sd).date()
+                except Exception:
+                    sd = sd.date()
+            # sd es date aquí
+            self.initial["source_date"] = sd.strftime("%Y-%m-%d")
 
     def clean_link_or_file(self):
         val = (self.cleaned_data.get("link_or_file") or "").strip()
         if not val:
-            return val  
+            return val  # vacío permitido
 
         if val.lower().startswith("mailto:"):
             if "@" not in val[7:]:
@@ -385,18 +397,21 @@ class SourceForm(forms.ModelForm):
         d = self.cleaned_data.get("source_date")
         if not d:
             return d
-        naive_dt = datetime.combine(d, time.min)
-        aware_dt = timezone.make_aware(naive_dt, timezone.get_current_timezone())
-        if aware_dt.date() > timezone.localdate():
+        
+        if isinstance(d, datetime):
+            d = d.date()
+        if d > timezone.localdate():
             raise forms.ValidationError("Date must be today or in the past.")
-        return aware_dt
+        return d  
 
     def clean(self):
         cleaned = super().clean()
 
+        # Señales de lo que el usuario adjuntó
         has_main_link = bool((cleaned.get("link_or_file") or "").strip())
         has_main_file = bool(cleaned.get("file_upload"))
 
+        # Archivos adicionales que vienen por request.FILES (name="extra_files")
         extra_files = []
         if hasattr(self.files, "getlist"):
             try:
@@ -404,6 +419,18 @@ class SourceForm(forms.ModelForm):
             except Exception:
                 extra_files = []
 
+        has_any_file = has_main_file or bool(extra_files)
+
+        # Inferencia de tipo sin forzar validaciones adicionales
+        if has_main_link and has_any_file:
+            st = "MIXED"
+        elif has_main_link:
+            st = "LINK"
+        elif has_any_file:
+            st = "FILE"
+        else:
+            st = ""  
+        cleaned["source_type"] = st
         return cleaned
     
 class RegisterForm(UserCreationForm):

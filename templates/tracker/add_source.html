@@ -45,7 +45,6 @@
 
                 <div class="mb-1">
                   <label class="form-label" for="id_source_date">Date</label>
-                  {# El widget de Django ya es type="date". Lo dejamos y solo regulamos con JS. #}
                   {{ form.source_date }}
                   <div class="form-text text-muted">Pick a date (today or earlier).</div>
                   {% if form.source_date.errors %}<div class="invalid-feedback d-block">{{ form.source_date.errors|join:", " }}</div>{% endif %}
@@ -174,7 +173,13 @@
           </div>
         </div>
 
-        {{ form.source_type }} <!-- hidden -->
+        {# ---- AQUI VA LO NUEVO: renderizar todos los hidden fields (incluye source_type) ---- #}
+        <div class="d-none">
+          {% for hidden in form.hidden_fields %}
+            {{ hidden }}
+          {% endfor %}
+        </div>
+        {# ------------------------------------------------------------------------------- #}
 
         <div class="d-flex justify-content-between">
           <a href="{{ cancel_url|default:'#' }}" class="btn btn-outline-secondary">
@@ -243,10 +248,8 @@
     d.max = `${t.getFullYear()}-${p(t.getMonth()+1)}-${p(t.getDate())}`;
     d.required = true;
 
-    // Deja el campo en blanco en la primera carga (no POST/no errores)
     if(FORCE_EMPTY_DATE){ try{ d.value = ''; }catch(e){} }
 
-    // Sugerencia visual
     if(!d.getAttribute('placeholder')) d.setAttribute('placeholder','Select a date…');
   })();
 
