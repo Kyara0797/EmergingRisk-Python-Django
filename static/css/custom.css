@@ -48,11 +48,11 @@
     color: white;
 }
 .badge-risk-high {
-    background-color: #ffc107; /* Amarillo (High) */
+    background-color: #ff0000; /* Amarillo (High) */
     color: black;
 }
-.badge-risk-moderate {
-    background-color: #17a2b8; /* Azul claro (Moderate) */
+.badge-risk-medium {
+    background-color: #17a2b8; /* Azul claro (Medium) */
     color: white;
 }
 .badge-risk-low {
@@ -69,3 +69,5 @@
 #themeList {
     transition: opacity 0.3s ease;
 }
+
+.bg-orange { background-color:#fd7e14 !important; color:#fff !important; }

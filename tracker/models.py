@@ -236,8 +236,8 @@ RISK_CHOICES = [
 RISK_COLORS = {
     'low': 'success',
     'medium': 'warning',
-    'high': 'danger',
-    'critical': 'dark'
+    'high': 'orange',
+    'critical': 'danger'
 }
 
 CATEGORY_CHOICES = [
@@ -325,6 +325,9 @@ class Theme(models.Model):
         ]
     
     def get_risk_color(self):
+        key = (self.risk_rating or '').strip().upper()
+        if key == 'MEDIUM':  # alias por si quedó algún registro antiguo
+            key = 'MEDIUM'
         return RISK_COLORS.get(self.risk_rating, 'secondary')
 
     def clean(self):
@@ -368,8 +371,8 @@ class Event(models.Model):
     RISK_COLORS = {
         'LOW': 'success',
         'MEDIUM': 'warning',
-        'HIGH': 'danger',
-        'CRITICAL': 'dark',
+        'HIGH': 'orange',
+        'CRITICAL': 'danger',
     }
     
     # Campos del modelo

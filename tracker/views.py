@@ -381,13 +381,11 @@ def event_list(request):
     else:
         events = events.annotate(rk=risk_order).order_by("rk", "name", "-id")
 
-    paginator = Paginator(events, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    
 
     return render(request, 'tracker/event_list.html', {
-        'events': page_obj,
-        'is_paginated': paginator.num_pages > 1,
+        'events': events,
+        'is_paginated': False,
         'search_query': q or '',
         'sort': sort,
     })

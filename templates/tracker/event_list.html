@@ -1,61 +1,67 @@
-{# tracker/templates/tracker/event_list.html #}
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-  <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">Events</h3>
-    <a href="{% url 'add_event_redirect' %}" class="btn btn-primary btn-sm fw-semibold">
-      <i class="fas fa-plus me-1"></i> New Event
-    </a>
-  </div>
+<div class="container">
+  <!-- Título consistente -->
+  <h2 class="my-4">
+    <i class="fas fa-calendar-alt me-2"></i>All Events
+  </h2>
 
-  <!-- Search -->
-  <form method="get" class="mb-3 d-flex gap-2" role="search">
-    <input type="text"
-           name="q"
-           class="form-control"
-           placeholder="Search by name, description, or Threat"
-           value="{{ search_query }}">
-    <button class="btn btn-outline-secondary btn-sm">
-      <i class="fas fa-search me-1"></i> Search
-    </button>
-  </form>
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Event List</h5>
+        <a href="{% url 'add_event_redirect' %}" class="btn btn-light btn-sm">
+          <i class="fas fa-plus me-1"></i> New Event
+        </a>
+      </div>
+    </div>
 
-  {% if events %}
-  <div class="card">
     <div class="card-body">
+      <!-- DataTables genera su propio buscador/length selector -->
       <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead>
+        <table class="table table-hover align-middle" id="eventsTable" style="width:100%;">
+          <thead class="table-light">
             <tr>
               <th>Event Name</th>
-              <th>Threat</th>
+              <th class="no-sort">Threat</th>
               <th>Date Identified</th>
               <th>Status</th>
-              <th>Risk Rating</th>
-              <th class="text-end">Actions</th>
+              <th>Risk</th>
+              <th class="no-sort" style="width:160px;">Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for event in events %}
-            <tr>
-              <td class="fw-semibold">
+            <tr class="event-row" data-href="{% url 'view_event' event_id=event.pk %}">
+              <!-- NAME (ordenable) -->
+              <td>
                 <a href="{% url 'view_event' event_id=event.pk %}" class="text-decoration-none">
                   {{ event.name }}
                 </a>
               </td>
+
+              <!-- THREAT (NO ordenable) -->
               <td>{{ event.theme.name }}</td>
-              <td>{{ event.date_identified|date:"Y-m-d" }}</td>
+
+              <!-- DATE (ordenable por el texto ISO mostrado) -->
+              <td data-order="{{ event.date_identified|date:'Ymd' }}">
+                {{ event.date_identified|date:"Y-m-d" }}
+              </td>
+
+              <!-- STATUS (ordenable por texto) -->
               <td>{{ event.get_status_display }}</td>
+
+              <!-- RISK con colores consistentes -->
               <td>
                 <span class="badge bg-{{ event.get_risk_color }}">
                   {{ event.get_risk_rating_display }}
                 </span>
               </td>
-              <td class="text-end">
-                <div class="btn-group btn-group-sm" role="group" aria-label="Actions">
+
+              <!-- ACTIONS (NO ordenable) -->
+              <td>
+                <div class="btn-group btn-group-sm">
                   <a href="{% url 'view_event' event_id=event.pk %}" class="btn btn-outline-primary" title="View">
                     <i class="fas fa-eye"></i>
                   </a>
@@ -68,50 +74,72 @@
                 </div>
               </td>
             </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="text-center py-4">
+                No events found.
+                <a href="{% url 'add_event_redirect' %}" class="ms-2">Create one?</a>
+              </td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-
-      {% if is_paginated %}
-      <nav aria-label="Events pagination" class="mt-3">
-        <ul class="pagination mb-0">
-          {% if events.has_previous %}
-          <li class="page-item">
-            <a class="page-link" href="?page={{ events.previous_page_number }}&q={{ search_query }}">Previous</a>
-          </li>
-          {% else %}
-          <li class="page-item disabled"><span class="page-link">Previous</span></li>
-          {% endif %}
-
-          <li class="page-item disabled">
-            <span class="page-link">Page {{ events.number }} of {{ events.paginator.num_pages }}</span>
-          </li>
-
-          {% if events.has_next %}
-          <li class="page-item">
-            <a class="page-link" href="?page={{ events.next_page_number }}&q={{ search_query }}">Next</a>
-          </li>
-          {% else %}
-          <li class="page-item disabled"><span class="page-link">Next</span></li>
-          {% endif %}
-        </ul>
-      </nav>
-      {% endif %}
     </div>
   </div>
-  {% else %}
-    <div class="alert alert-info">
-      <i class="fas fa-info-circle me-1"></i>
-      No events found.
-    </div>
-  {% endif %}
 </div>
+{% endblock %}
 
+{% block scripts %}
 <style>
-  /* Consistencia visual con theme_detail */
-  .card > .card-body { padding-top: 1rem; padding-bottom: 1rem; }
-  .table-hover tbody tr:hover { background: #fafbfd; }
-  .btn-group .btn { border-radius: .55rem; }
+/* Oculta las flechas de sort en columnas sin orden (Threat, Actions) y desactiva clic */
+#eventsTable th.no-sort.sorting:before,
+#eventsTable th.no-sort.sorting:after,
+#eventsTable th.no-sort.sorting_asc:before,
+#eventsTable th.no-sort.sorting_asc:after,
+#eventsTable th.no-sort.sorting_desc:before,
+#eventsTable th.no-sort.sorting_desc:after,
+#eventsTable th.no-sort.sorting_disabled:before,
+#eventsTable th.no-sort.sorting_disabled:after {
+  display: none !important;
+}
+#eventsTable th.no-sort { pointer-events: none; }
+
+/* Si aún no lo tienes en base.html, define el naranja */
+.bg-orange { background-color:#fd7e14 !important; color:#fff !important; }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const dt = $('#eventsTable').DataTable({
+    // Coloca "Show _MENU_" a la izquierda y "Search" a la derecha (consistente)
+    dom: "<'row'<'col-md-6'l><'col-md-6'f>>" + "rtip",
+    autoWidth: false,
+    order: [],          // sin orden inicial forzado
+    pageLength: 10,     // arranque en 10 (selector permite cambiar)
+    lengthMenu: [[5,10,20,-1], [5,10,20,'All']],
+    columnDefs: [
+      // Threat (1) y Actions (5) NO ordenables
+      { targets: 1, orderable: false, className: 'no-sort' },
+      { targets: 5, orderable: false, searchable: false, className: 'no-sort' },
+      // Date (2): ya enviamos data-order="YYYYMMDD" para ordenar bien
+    ],
+    language: {
+      search: "Search:",
+      lengthMenu: "Show _MENU_",
+      info: "Showing _START_ to _END_ of _TOTAL_ events",
+      infoEmpty: "Showing 0 to 0 of 0 events",
+      emptyTable: "No events available",
+      paginate: { first: "First", last: "Last", next: "Next", previous: "Previous" }
+    }
+  });
+
+  // Navegar al detalle al hacer click en la fila (excepto en los botones)
+  $('#eventsTable tbody').on('click', 'tr', function (e) {
+    if ($(e.target).closest('a,button,.btn').length) return;
+    const href = $(this).attr('data-href');
+    if (href) window.location = href;
+  });
+});
+</script>
 {% endblock %}
