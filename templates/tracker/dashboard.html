@@ -270,6 +270,47 @@
 
   /* Paginación compacta */
   #eventsPagination .page-link { padding: .25rem .5rem; }
+
+  /* Opcional: armoniza el select de DataTables con Bootstrap */
+  .dataTables_length select {
+    display: inline-block;
+    width: auto;
+    min-height: 32px;
+  }
+
+  /* ===== Alinear controles de DataTables (Recent Threats) ===== */
+  #themesTable_wrapper .dataTables_length,
+  #themesTable_wrapper .dataTables_filter {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  #themesTable_wrapper .dataTables_length { float: left; }
+  #themesTable_wrapper .dataTables_filter { float: right; }
+
+  #themesTable_wrapper .dataTables_length label,
+  #themesTable_wrapper .dataTables_filter label {
+    margin: 0;
+    font-weight: 500;
+  }
+  #themesTable_wrapper .dataTables_length select {
+    margin: 0 .4rem;
+    min-height: 32px;
+  }
+  #themesTable_wrapper .dataTables_filter input[type="search"] {
+    margin-left: .4rem;
+    min-width: 180px;
+  }
+
+  /* Responsive: en pantallas estrechas, apila */
+  @media (max-width: 576px) {
+    #themesTable_wrapper .dataTables_length,
+    #themesTable_wrapper .dataTables_filter {
+      float: none;
+      justify-content: space-between;
+      margin-bottom: .75rem;
+    }
+  }
 </style>
 {% endblock %}
 
@@ -278,6 +319,7 @@
 /* ===== Threats: DataTable ===== */
 $(function () {
   const themesDT = $('#themesTable').DataTable({
+    dom: 'lfrtip',                 // asegura control de longitud (l)
     autoWidth: false,
     columnDefs: [
       { targets: 0, width: '42%', className: 'col-name' },
@@ -286,7 +328,8 @@ $(function () {
       { targets: 3, width: '18%', className: 'col-risk' }
     ],
     order: [[2, 'desc']],
-    pageLength: 5,
+    lengthMenu: [[5, 10, 20, -1], [5, 10, 20, 'All']], // opciones + 'All'
+    pageLength: 5,                                      // arranque en 5
     language: {
       emptyTable: 'No threats available',
       info: 'Showing _START_ to _END_ of _TOTAL_ threats',
@@ -328,7 +371,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function renderPagination(total, pageSize) {
-    // ocultar si all o sin necesidad
     if (!isFinite(pageSize) || total <= pageSize) {
       pager.innerHTML = '';
       countText.textContent = total ? `Showing 1–${Math.min(total, pageSize)} of ${total}` : 'No events';
@@ -365,7 +407,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const vis = visibleItems();
     const total = vis.length;
 
-    // toggle por página
     if (!isFinite(pageSize)) {
       vis.forEach(el => el.classList.remove('hidden'));
       renderPagination(total, pageSize);
@@ -422,7 +463,6 @@ document.addEventListener('DOMContentLoaded', function () {
     applyShowPage();
   }
 
-  // listeners
   eventSearch.addEventListener('input', () => { searchEvents(); sortEvents(currentSort, sortAscending); });
 
   document.querySelectorAll('.sort-event').forEach(btn => {
@@ -453,7 +493,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // Inicial
-  searchEvents();               // marca filtered-out según búsqueda (vacía)
+  searchEvents();                // filtra (vacío) y prepara lista
   sortEvents(currentSort, true); // orden inicial por name asc
 });
 

@@ -223,8 +223,9 @@ def _has_any_attachment(leader, extra_links, extra_files):
 
 def dashboard(request):
     categories = Category.objects.all()
-    themes = Theme.objects.all().order_by('-created_at')[:5]
-    events = Event.objects.all().order_by('-date_identified')[:5]
+    MAX_ROWS = 200
+    themes = Theme.objects.all().order_by('-created_at')[:MAX_ROWS]
+    events = Event.objects.all().order_by('-date_identified')[:MAX_ROWS]
     return render(request, 'tracker/dashboard.html', {
         'categories': categories,
         'themes': themes,
