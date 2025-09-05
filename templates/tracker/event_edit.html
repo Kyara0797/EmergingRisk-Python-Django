@@ -82,7 +82,7 @@
                 <div class="mb-3">
                   <label class="form-label">Risk Rating</label>
 
-                  <!-- Select real (queda oculto pero es el que envía el valor) -->
+                  <!-- Select real (oculto) -->
                   <select name="risk_rating" class="form-select d-none" id="risk_select" required>
                     {% for value, label in form.risk_rating.field.choices %}
                       <option value="{{ value }}"
@@ -290,31 +290,45 @@ document.addEventListener('DOMContentLoaded', () => {
   cards.forEach(c => c.addEventListener('click', () => selectCard(c.dataset.value)));
   if (riskSelect.value) selectCard(riskSelect.value);
 
-/* ---------- Business lines "All" ---------- */
+/* ---------- Business lines "All" (excluye 'Evaluation in progress') ---------- */
+(() => {
   const allCb = document.querySelector('input[name="impacted_lines"][value="All"]');
-  if (allCb){
-    const others = document.querySelectorAll('input[name="impacted_lines"]:not([value="All"])');
-    const syncAll = () => {
-      const allChecked = [...others].every(cb => cb.checked);
-      if (allChecked) { allCb.checked = true; others.forEach(cb => cb.disabled = true); }
-      else { others.forEach(cb => cb.disabled = false); }
-    };
-    allCb.addEventListener('change', () => {
-      others.forEach(cb => { cb.checked = allCb.checked; cb.disabled = allCb.checked; });
-    });
-    others.forEach(cb => cb.addEventListener('change', () => { if (cb.checked) allCb.checked = false; syncAll(); }));
-    if (allCb.checked) { others.forEach(cb => { cb.checked = true; cb.disabled = true; }); }
-    else syncAll();
+  if (!allCb) return;
+
+  const cbs     = Array.from(document.querySelectorAll('input[name="impacted_lines"]'));
+  const evalCb  = cbs.find(cb => cb.value === 'Evaluation in progress');
+  const targets = cbs.filter(cb => cb !== allCb && cb !== evalCb); // solo LOBs reales
+
+  function applyAll(on){
+    // Con All ON: marcar y deshabilitar targets; forzar Eval OFF + deshabilitada
+    targets.forEach(cb => { cb.checked = on; cb.disabled = on; });
+    if (evalCb){ evalCb.checked = false; evalCb.disabled = on; }
   }
+
+  function recompute(){
+    const allOn = targets.length && targets.every(cb => cb.checked);
+    allCb.checked = allOn;
+    targets.forEach(cb => cb.disabled = allOn);
+    if (evalCb){
+      if (allOn){ evalCb.checked = false; evalCb.disabled = true; }
+      else { evalCb.disabled = false; }
+    }
+  }
+
+  allCb.addEventListener('change', () => applyAll(allCb.checked));
+  targets.forEach(cb => cb.addEventListener('change', recompute));
+  // Guardrail: si intentan marcar Eval con All activo, la apaga
+  evalCb && evalCb.addEventListener('change', () => { if (allCb.checked) evalCb.checked = false; });
+
+  // Estado inicial al entrar a editar
+  if (allCb.checked) applyAll(true); else recompute();
+})();
 
 /* ---------- Taxonomy (LV1 → LV2 → LV3) ---------- */
   let taxonomy = { hierarchical: [], flat: {} };
   try { taxonomy = JSON.parse('{{ taxonomy_json|escapejs }}'); } catch(e) { console.warn('taxonomy_json parse error', e); }
 
-  // Selecciones persistentes en memoria
   const sel = { lv1: [], lv2: [], lv3: [] };
-
-  // Mapa de padres para depurar al cambiar niveles
   const parentOfLv2 = {};
   const parentOfLv3 = {};
 
@@ -327,7 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Cargar selección inicial desde taxonomy_json (edición)
   (taxonomy.hierarchical || []).forEach(l1 => {
     if (l1.selected) sel.lv1.push(l1.key);
     (l1.children || []).forEach(l2 => {
@@ -338,26 +351,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // DOM refs
   const lv1Box = document.getElementById('taxonomy-lv1-container');
   const lv2Wrap = document.getElementById('lv2-container');
   const lv3Wrap = document.getElementById('lv3-container');
   const lv2Options = document.getElementById('lv2-options');
   const lv3Options = document.getElementById('lv3-options');
 
-  // Util
   const genId = (t) => String(t).toLowerCase().replace(/[^a-z0-9]+/g,'-');
 
-  // Lectores desde DOM (LV1 se lee del DOM; LV2/LV3 se mantienen en sel.*)
   function readLv1(){
     sel.lv1 = [...document.querySelectorAll('input[name="risk_taxonomy_lv1"]:checked')].map(x => x.value);
   }
 
-  // Depurar selecciones de niveles inferiores cuando cambian superiores
   function pruneAfterLv1Change(){
-    // Mantener solo LV2 cuyos padres LV1 sigan marcados
     sel.lv2 = sel.lv2.filter(k2 => sel.lv1.includes(parentOfLv2[k2]));
-    // Mantener solo LV3 cuyos padres LV2 sigan en sel.lv2
     sel.lv3 = sel.lv3.filter(k3 => sel.lv2.includes(parentOfLv3[k3]));
   }
   function pruneAfterLv2Change(){
@@ -376,7 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Generar LV2 solo para los LV1 actualmente marcados
     let html = '';
     sel.lv1.forEach(k1 => {
       const n1 = (taxonomy.hierarchical || []).find(x => x.key === k1);
@@ -397,14 +403,12 @@ document.addEventListener('DOMContentLoaded', () => {
     lv2Options.innerHTML = html;
     lv2Wrap.style.display = 'block';
 
-    // Listeners LV2: actualizar sel.lv2 y LV3 dependientes
     document.querySelectorAll('input[name="risk_taxonomy_lv2"]').forEach(el => {
       el.addEventListener('change', () => {
         if (el.checked) {
           if (!sel.lv2.includes(el.value)) sel.lv2.push(el.value);
         } else {
           sel.lv2 = sel.lv2.filter(v => v !== el.value);
-          // si quitas un LV2, quita todos sus LV3
           sel.lv3 = sel.lv3.filter(k3 => parentOfLv3[k3] !== el.value);
         }
         buildLv3();
@@ -426,7 +430,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let html = '';
     sel.lv2.forEach(k2 => {
-      // Buscar el nodo LV2 en el árbol para renderizar sus hijos
       let node2 = null;
       for (const n1 of (taxonomy.hierarchical || [])){
         const f = (n1.children || []).find(c => c.key === k2);
@@ -450,7 +453,6 @@ document.addEventListener('DOMContentLoaded', () => {
     lv3Options.innerHTML = html;
     lv3Wrap.style.display = 'block';
 
-    // Listeners LV3: actualizar sel.lv3
     document.querySelectorAll('input[name="risk_taxonomy_lv3"]').forEach(el => {
       el.addEventListener('change', () => {
         if (el.checked) {
@@ -464,17 +466,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => lv3Wrap.scrollIntoView({behavior:'smooth', block:'center'}), 50);
   }
 
-  // Listeners LV1
   lv1Box.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      // Actualizar sel.lv1 desde DOM y reconstruir niveles manteniendo selecciones válidas
-      buildLv2();
-    });
+    cb.addEventListener('change', () => { buildLv2(); });
   });
 
-  // Bootstrap inicial
   (function bootstrapTaxonomy(){
-    // Si el usuario ya tenía LV1 marcados en el DOM, úsalos como fuente de verdad
     const lv1FromDom = [...document.querySelectorAll('input[name="risk_taxonomy_lv1"]:checked')].map(x => x.value);
     if (lv1FromDom.length) sel.lv1 = lv1FromDom;
     buildLv2();
@@ -484,14 +480,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('submit-btn').addEventListener('click', function(e){
     let ok = true;
 
-    // basic requireds
     ['id_theme','id_date_identified','id_status','risk_select','id_description'].forEach(id => {
       const el = document.getElementById(id) || document.querySelector(`[name="${id}"]`);
       if (!el || !el.value) { ok = false; el?.classList.add('is-invalid'); }
       else el.classList.remove('is-invalid');
     });
 
-    // date not future
     const d = document.getElementById('id_date_identified');
     if (d && d.value){
       const selD = new Date(d.value);
@@ -499,10 +493,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (selD > t){ ok = false; d.classList.add('is-invalid'); }
     }
 
-    // taxonomy required
     if (![...document.querySelectorAll('input[name="risk_taxonomy_lv1"]:checked')].length){
       ok = false; document.getElementById('lv1-error').style.display='block';
     } else document.getElementById('lv1-error').style.display='none';
+
+    const lv2Wrap = document.getElementById('lv2-container');
+    const lv3Wrap = document.getElementById('lv3-container');
 
     if (lv2Wrap.style.display !== 'none' &&
         ![...document.querySelectorAll('input[name="risk_taxonomy_lv2"]:checked')].length){

@@ -11,6 +11,7 @@ from django.views.generic import UpdateView, DeleteView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.conf import settings
 from django.http import JsonResponse, HttpResponseRedirect
+from collections import OrderedDict
 
 from .models import (
     Category, Theme, Event, Source, UserAccessLog, SourceFileVersion,
@@ -24,6 +25,19 @@ import json
 import os
 from urllib.parse import urlparse
 
+import uuid
+from django.core.files.base import File  # para reasignar archivos
+from .models import TempUpload 
+from datetime import date
+
+def is_admin(user):
+    return user.is_authenticated and (user.is_staff or user.is_superuser)
+
+admin_required = user_passes_test(is_admin)
+
+class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    def test_func(self):
+        return is_admin(self.request.user)
 # Extensiones permitidas para archivos
 ALLOWED_FILE_EXTS = {".pdf", ".doc", ".docx", ".eml", ".msg"}
 
@@ -109,10 +123,6 @@ def _valid_link(v: str) -> bool:
         return "@" in v[7:]
     p = urlparse(v)
     return p.scheme in ("http", "https") and bool(p.netloc)
-
-
-def _bundle_key(s: Source):
-    return (s.name or "", s.summary or "", str(s.source_date or ""))
 
 
 def _bundle_filter_dict(src: Source) -> dict:
@@ -224,8 +234,8 @@ def _has_any_attachment(leader, extra_links, extra_files):
 def dashboard(request):
     categories = Category.objects.all()
     MAX_ROWS = 200
-    themes = Theme.objects.all().order_by('-created_at')[:MAX_ROWS]
-    events = Event.objects.all().order_by('-date_identified')[:MAX_ROWS]
+    themes = Theme.objects.filter(is_active=True).all().order_by('-created_at')[:MAX_ROWS]
+    events = Event.objects.filter(is_active=True).all().order_by('-date_identified')[:MAX_ROWS]
     return render(request, 'tracker/dashboard.html', {
         'categories': categories,
         'themes': themes,
@@ -239,29 +249,43 @@ def dashboard(request):
 
 # Listas y detail: PÚBLICO
 def theme_list_all(request):
-    themes = Theme.objects.all().order_by('name')
-    search_query = request.GET.get('q')
-    if search_query:
-        themes = themes.filter(
-            Q(name__icontains=search_query) |
-            Q(category__name__icontains=search_query)
-        )
-    paginator = Paginator(themes, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    return render(request, 'tracker/theme_list.html', {
-        'themes': page_obj,
-        'is_paginated': paginator.num_pages > 1,
-        'search_query': search_query or ''
-    })
+    show_archived = request.GET.get('show_archived') == '1'
+    q = (request.GET.get('q') or '').strip()
 
+    themes = (Theme.objects
+              .select_related('category')
+              .order_by('name'))
+
+    if not show_archived:
+        themes = themes.filter(is_active=True)
+
+    if q:
+        themes = themes.filter(
+            Q(name__icontains=q) |
+            Q(category__name__icontains=q)
+        )
+
+    return render(request, 'tracker/theme_list.html', {
+        'themes': themes,                 # <- sin Paginator
+        'is_paginated': False,            # DataTables pagina
+        'search_query': q,                # <- conservamos q
+        'show_archived': show_archived,
+        'is_admin': is_admin(request.user),
+    })
 
 def theme_list(request, category_id):
     category = get_object_or_404(Category, pk=category_id)
-    themes = Theme.objects.filter(category=category).order_by('name')
+    show_archived = request.GET.get('show_archived') == '1'
+
+    themes = Theme.objects.filter(category=category)
+    if not show_archived:
+        themes = themes.filter(is_active=True)
+
     return render(request, 'tracker/theme_list.html', {
         'category': category,
-        'themes': themes
+        'themes': themes.order_by('name'),
+        'show_archived': show_archived,
+        'is_admin': is_admin(request.user),
     })
 
 
@@ -282,7 +306,7 @@ class ThemeDetailView(DetailView):
 
 
 # Crear/editar: LOGIN requerido (ya no admin-only)
-class ThemeUpdateView(LoginRequiredMixin, UpdateView):
+class ThemeUpdateView(AdminRequiredMixin, UpdateView):
     model = Theme
     form_class = ThemeForm
     template_name = 'tracker/theme_edit.html'
@@ -296,8 +320,7 @@ class ThemeUpdateView(LoginRequiredMixin, UpdateView):
         return reverse_lazy('view_theme', kwargs={'pk': self.object.pk})
 
 
-class ThemeDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
-    """Mantengo delete de Theme como admin-only por ser destructivo."""
+class ThemeDeleteView(AdminRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Theme
     template_name = 'tracker/theme_confirm_delete.html'
     success_url = reverse_lazy('theme_list_all')
@@ -315,7 +338,7 @@ class ThemeDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
 
 
 # Crear Threat
-@login_required
+@admin_required
 def add_theme(request):
     preselect_category_id = request.GET.get('category')
     initial = {}
@@ -339,7 +362,18 @@ def add_theme(request):
 
     return render(request, 'tracker/add_theme.html', {'form': form})
 
+@admin_required
+@login_required
+def toggle_theme_active(request, pk):
+    if request.method != "POST":
+        messages.error(request, "Invalid method.")
+        return redirect('theme_list_all')
 
+    theme = get_object_or_404(Theme, pk=pk)
+    theme.is_active = not theme.is_active
+    theme.save(update_fields=['is_active'])
+    messages.success(request, "Threat restored." if theme.is_active else "Threat archived.")
+    return redirect(request.META.get('HTTP_REFERER') or 'theme_list_all')
 # =========================================================
 # Events
 # =========================================================
@@ -347,7 +381,11 @@ def add_theme(request):
 # List & Detail: PÚBLICO
 def event_list(request):
     sort = request.GET.get("sort") or "-risk"
+    show_archived = request.GET.get('show_archived') == '1'
+
     events = Event.objects.select_related('theme').all()
+    if not show_archived:
+        events = events.filter(is_active=True)
 
     q = request.GET.get('q')
     if q:
@@ -381,59 +419,131 @@ def event_list(request):
     else:
         events = events.annotate(rk=risk_order).order_by("rk", "name", "-id")
 
-    
-
     return render(request, 'tracker/event_list.html', {
         'events': events,
         'is_paginated': False,
         'search_query': q or '',
         'sort': sort,
+        'show_archived': show_archived,
+        'is_admin': is_admin(request.user),
     })
 
 
-def view_event(request, event_id):
-    event = get_object_or_404(Event, pk=event_id)
-    request.session["last_viewed_event"] = event.pk
-
-    show_archived = request.GET.get("show_archived") == "1"
-    selected_source_type = request.GET.get("source_type") or ""
-
-    bundles = build_source_bundles(event, show_archived, selected_source_type or None)
-
-    impact_lobs_display = list(event.impacted_lines or [])
-    if "All" in impact_lobs_display:
-        impact_lobs_display = [k for k, _ in LINE_OF_BUSINESS_CHOICES if k != "All"]
-
-    lv1_labels, lv2_labels, lv3_labels = _taxonomy_label_lists(event)
-
-    return render(
-        request,
-        "tracker/event_detail.html",
-        {
-            "event": event,
-            "source_bundles": bundles,
-            "bundle_count": len(bundles),
-            "selected_source_type": selected_source_type,
-            "bundle_type_choices": [
-                ("", "All Types"),
-                ("LINK", "Link"),
-                ("FILE", "File"),
-                ("MIXED", "Mixed"),
-            ],
-            "show_archived": show_archived,
-            "risk_colors": {
-                "LOW": "success",
-                "MEDIUM": "warning",
-                "HIGH": "danger",
-                "CRITICAL": "dark",
-            },
-            "impact_lobs_display": impact_lobs_display,
-            "risk_lv1_labels": lv1_labels,
-            "risk_lv2_labels": lv2_labels,
-            "risk_lv3_labels": lv3_labels,
-        },
+def _bundle_key(src):
+    """Agrupa ‘hermanos’ creados desde Add/Edit Source.
+    Usamos una llave estable basada en evento, nombre, fecha y summary normalizado."""
+    return (
+        src.event_id,
+        (src.name or "").strip(),
+        src.source_date,
+        (src.summary or "").strip().lower(),
     )
 
+def _make_bundles(qs):
+    """
+    Construye bundles a partir de un queryset de Source.
+    Devuelve una lista de dicts con:
+      leader (Source), items (list[Source]), links (int), files (int),
+      any_active (bool), display_type ('LINK'|'FILE'|'MIXED')
+    """
+    buckets = OrderedDict()
+    # Traemos solo lo necesario para performance
+    qs = qs.select_related("event").only(
+        "id", "event_id", "name", "source_date", "summary",
+        "is_active", "file_upload", "link_or_file", "source_type",
+        "potential_impact", "potential_impact_notes",
+    )
+
+    for s in qs:
+        key = _bundle_key(s)
+        if key not in buckets:
+            buckets[key] = {
+                "leader": s,         # primer visto actúa como leader
+                "items": [],
+                "links": 0,
+                "files": 0,
+                "any_active": False,
+                "display_type": "LINK",
+            }
+        b = buckets[key]
+        b["items"].append(s)
+        if s.link_or_file:
+            b["links"] += 1
+        if getattr(s, "file_upload", None):
+            b["files"] += 1
+        if s.is_active:
+            b["any_active"] = True
+
+    # Tipo a partir de los contadores
+    for b in buckets.values():
+        if b["links"] and b["files"]:
+            b["display_type"] = "MIXED"
+        elif b["files"]:
+            b["display_type"] = "FILE"
+        else:
+            b["display_type"] = "LINK"
+
+    # Orden por fecha desc (si no hay, va al final)
+    bundles = list(buckets.values())
+    bundles.sort(key=lambda x: (x["leader"].source_date or date.min), reverse=True)
+    return bundles
+
+
+@login_required
+def view_event(request, event_id):
+    event = get_object_or_404(Event, pk=event_id)
+
+    # filtros de UI
+    show_archived = request.GET.get("show_archived") == "1"
+    selected_source_type = (request.GET.get("source_type") or "").strip().upper() or "ALL"
+
+    # base queryset de sources del evento
+    qs = Source.objects.filter(event=event)
+    if not show_archived:
+        qs = qs.filter(is_active=True)
+
+    # construimos bundles a partir del queryset filtrado
+    bundles = _make_bundles(qs)
+
+    # filtro por tipo a nivel bundle (LINK/FILE/MIXED)
+    if selected_source_type != "ALL":
+        bundles = [b for b in bundles if b["display_type"] == selected_source_type]
+
+    # choices para el select
+    bundle_type_choices = [
+        ("ALL", "All Types"),
+        ("MIXED", "Mixed"),
+        ("FILE", "Files"),
+        ("LINK", "Links"),
+    ]
+
+    def get_risk_labels(event, level):
+        lv1_map = dict(RISK_TAXONOMY_LV1)
+        lv2_map = {val: label for items in RISK_TAXONOMY_LV2.values() for val, label in items}
+        lv3_map = {val: label for items in RISK_TAXONOMY_LV3.values() for val, label in items}
+        if level == 1:
+            return [lv1_map.get(v, v) for v in (event.risk_taxonomy_lv1 or [])]
+        elif level == 2:
+            return [lv2_map.get(v, v) for v in (event.risk_taxonomy_lv2 or [])]
+        elif level == 3:
+            return [lv3_map.get(v, v) for v in (event.risk_taxonomy_lv3 or [])]
+        return []
+
+    context = {
+        "event": event,
+        "source_bundles": bundles,
+        "bundle_type_choices": bundle_type_choices,
+        "selected_source_type": selected_source_type,
+        "show_archived": show_archived,
+        "bundle_count": len(bundles),
+        # lo demás que ya pasabas a la plantilla:
+        "impact_lobs_display": event.impacted_lines if hasattr(event, "impacted_lines") else [],  # fallback if no function
+        "risk_lv1_labels": get_risk_labels(event, level=1),
+        "risk_lv2_labels": get_risk_labels(event, level=2),
+        "risk_lv3_labels": get_risk_labels(event, level=3),
+        "is_admin": request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser),
+    }
+    return render(request, "tracker/event_detail.html", context)
 
 class EventDetailView(DetailView):
     model = Event
@@ -464,7 +574,7 @@ class EventDetailView(DetailView):
             'source_types': Source.SOURCE_TYPE_CHOICES,
             'selected_source_type': source_type,
             'show_archived': show_archived,
-            'risk_colors': {"LOW": "success", "MEDIUM": "warning", "HIGH": "danger", "CRITICAL": "dark"},
+            'risk_colors': Event.RISK_COLORS,
         })
         return ctx
 
@@ -478,7 +588,7 @@ def theme_list_by_category(request, category_id):
 
 
 # Crear / Editar / Borrar Event
-@login_required
+@admin_required
 def add_event(request, theme_id=None, theme_pk=None):
     theme = _resolve_theme_from_request(request, theme_id=theme_id, theme_pk=theme_pk)
 
@@ -518,7 +628,7 @@ def add_event(request, theme_id=None, theme_pk=None):
     )
 
 
-@login_required
+@admin_required
 def edit_event(request, pk=None, theme_pk=None):
     if pk:
         event = get_object_or_404(Event, pk=pk)
@@ -561,7 +671,7 @@ def edit_event(request, pk=None, theme_pk=None):
     )
 
 
-class EventDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+class EventDeleteView(AdminRequiredMixin, UserPassesTestMixin, DeleteView):
     """Eliminar Event lo dejo admin-only; editar/crear ya es libre para logueados."""
     model = Event
     template_name = 'tracker/event_confirm_delete.html'
@@ -590,6 +700,33 @@ def add_event_redirect(request):
     messages.warning(request, "Please create a Theme first")
     return redirect('add_theme')
 
+@admin_required
+@login_required
+def toggle_event_active(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+
+    # toggle
+    event.is_active = not event.is_active
+    event.save(update_fields=["is_active"])
+
+    if event.is_active:
+        messages.success(request, "Event restored.")
+    else:
+        messages.success(request, "Event archived.")
+
+    # 1) prioridad: next explícito (interno)
+    next_url = request.POST.get("next") or request.GET.get("next")
+
+    # 2) fallback inteligente según acción
+    if not next_url:
+        if event.is_active:
+            # restaurado -> vuelve al detalle del event
+            next_url = reverse("view_event", kwargs={"event_id": event.pk})
+        else:
+            # archivado -> ir al threat (theme) del event
+            next_url = reverse("view_theme", kwargs={"pk": event.theme_id})
+
+    return redirect(next_url)
 
 # =========================================================
 # Sources
@@ -692,7 +829,7 @@ class SourceDetailView(DetailView):
 
 
 # Crear / Editar / Archivar Sources: LOGIN requerido (ya no admin-only)
-@login_required
+@admin_required
 @transaction.atomic
 def add_source(request, event_pk):
     event = get_object_or_404(Event, pk=event_pk)
@@ -702,143 +839,147 @@ def add_source(request, event_pk):
         or reverse_lazy("view_event", kwargs={"event_id": event.pk})
     )
 
+    # batch para asociar archivos “pendientes” a este form
     if request.method == "POST":
+        upload_batch = request.POST.get("upload_batch") or str(uuid.uuid4())
+    else:
+        upload_batch = str(uuid.uuid4())
+
+    # Si viene un POST, primero stageamos cualquier archivo nuevo,
+    # y también procesamos pedidos de “borrar” staged previos.
+    if request.method == "POST":
+        # 1) borrar staged que el usuario quitó en el UI
+        drop_ids = [int(x) for x in request.POST.getlist("drop_temp_ids") if str(x).isdigit()]
+        if drop_ids:
+            _clear_staged(upload_batch, only_ids=drop_ids)
+
+        # 2) stagear cualquier archivo que venga en este intento
+        _stage_incoming_files(request, upload_batch, request.user)
+
         form = SourceForm(request.POST, request.FILES, initial={"event": event})
 
+        # Validar links adicionales
         extra_links = [v.strip() for v in request.POST.getlist("extra_links") if v and v.strip()]
         bad_links = [l for l in extra_links if not _valid_link(l)]
         if bad_links:
             form.add_error("link_or_file", "One or more additional links are invalid. Use http(s):// or mailto:.")
 
-        extra_files = _collect_extra_files(request)
+        # Leer staged actuales
+        staged_main, staged_extras = _get_staged(upload_batch)
 
         if form.is_valid():
             selected_event = form.cleaned_data.get("event") or event
 
+            # Evitar summaries duplicados (mismo evento)
             summary = (form.cleaned_data.get("summary") or "").strip()
             if summary and Source.objects.filter(event=selected_event, summary__iexact=summary).exists():
                 form.add_error("summary", "Summary must be different from existing ones for this event.")
-                existing = list(Source.objects.filter(event=selected_event).values_list("summary", flat=True))
-                return render(
-                    request,
-                    "tracker/add_source.html",
-                    {
-                        "form": form,
-                        "event": event,
-                        "cancel_url": cancel_url,
-                        "existing_summaries_json": json.dumps(existing),
-                    },
-                )
-
-            leader: Source = form.save(commit=False)
-            leader.event = selected_event
-            leader.created_by = request.user
-
-            if not _has_any_attachment(leader, extra_links, extra_files):
-                form.add_error(None, "Please add at least one link or file before saving.")
-                existing = list(Source.objects.filter(event=selected_event).values_list("summary", flat=True))
-                return render(
-                    request,
-                    "tracker/add_source.html",
-                    {
-                        "form": form,
-                        "event": event,
-                        "cancel_url": cancel_url,
-                        "existing_summaries_json": json.dumps(existing),
-                    },
-                )
-
-            if leader.file_upload and not _ext_ok(leader.file_upload):
-                form.add_error("file_upload", "File not allowed. Only .pdf, .doc, .docx, .eml, .msg")
-                return render(
-                    request,
-                    "tracker/add_source.html",
-                    {
-                        "form": form,
-                        "event": event,
-                        "cancel_url": cancel_url,
-                        "existing_summaries_json": json.dumps(
-                            list(Source.objects.filter(event=selected_event).values_list("summary", flat=True))
-                        ),
-                    },
-                )
-
-            leader.source_type = "FILE" if leader.file_upload else ("LINK" if leader.link_or_file else "LINK")
-            leader.save()
-            form.save_m2m()
-
-            created_links = 0
-            for l in extra_links:
-                Source.objects.create(
-                    event=leader.event,
-                    name=leader.name,
-                    source_date=leader.source_date,
-                    summary=leader.summary,
-                    potential_impact=leader.potential_impact,
-                    potential_impact_notes=leader.potential_impact_notes,
-                    link_or_file=l,
-                    created_by=request.user,
-                    source_type="LINK",
-                )
-                created_links += 1
-
-            created_files = 0
-            skipped = 0
-            for f in extra_files:
-                if not _ext_ok(f):
-                    skipped += 1
-                    continue
-                sib = Source(
-                    event=leader.event,
-                    name=leader.name,
-                    source_date=leader.source_date,
-                    summary=leader.summary,
-                    potential_impact=leader.potential_impact,
-                    potential_impact_notes=leader.potential_impact_notes,
-                    created_by=request.user,
-                    source_type="FILE",
-                )
-                sib.file_upload.save(f.name, f, save=False)
-                sib.save()
-                created_files += 1
-
-            parts = []
-            if leader.file_upload:
-                parts.append("main file attached")
-            if leader.link_or_file:
-                parts.append("main link added")
-            if created_files:
-                parts.append(f"{created_files} additional file(s) added")
-            if created_links:
-                parts.append(f"{created_links} additional link(s) added")
-            if skipped:
-                messages.warning(request, f"{skipped} file(s) were skipped (only .pdf, .doc, .docx, .eml, .msg allowed).")
-
-            if parts:
-                messages.success(request, "Source created: " + ", ".join(parts) + ".")
             else:
-                messages.info(request, "Source created.")
+                # Debe haber al menos un adjunto (link o archivo),
+                # considerando lo staged también.
+                leader: Source = form.save(commit=False)
+                leader.event = selected_event
+                leader.created_by = request.user
 
-            return redirect("view_event", event_id=leader.event_id)
+                # Si no viene main nuevo en este POST, pero hay uno staged, úsalo
+                if not leader.file_upload and staged_main:
+                    # Guardamos el archivo staged como main del leader
+                    leader.file_upload.save(staged_main.original_name, staged_main.file.file, save=False)
 
-    else:
-        form = SourceForm(initial={"event": event})
+                has_any = bool(leader.file_upload or leader.link_or_file or staged_extras or extra_links)
+                if not has_any:
+                    form.add_error(None, "Please add at least one link or file before saving.")
+                else:
+                    # Inferir source_type del leader
+                    leader.source_type = "FILE" if leader.file_upload else ("LINK" if leader.link_or_file else "LINK")
+                    leader.save()
+                    form.save_m2m()
 
+                    # Crear siblings por links adicionales
+                    created_links = 0
+                    for l in extra_links:
+                        Source.objects.create(
+                            event=leader.event,
+                            name=leader.name,
+                            source_date=leader.source_date,
+                            summary=leader.summary,
+                            potential_impact=leader.potential_impact,
+                            potential_impact_notes=leader.potential_impact_notes,
+                            link_or_file=l,
+                            created_by=request.user,
+                            source_type="LINK",
+                        )
+                        created_links += 1
+
+                    # Crear siblings por archivos staged (adicionales)
+                    created_files = 0
+                    for tu in staged_extras:
+                        sib = Source(
+                            event=leader.event,
+                            name=leader.name,
+                            source_date=leader.source_date,
+                            summary=leader.summary,
+                            potential_impact=leader.potential_impact,
+                            potential_impact_notes=leader.potential_impact_notes,
+                            created_by=request.user,
+                            source_type="FILE",
+                        )
+                        sib.file_upload.save(tu.original_name, tu.file.file, save=False)
+                        sib.save()
+                        created_files += 1
+
+                    # Limpieza staging (main y extras) al terminar
+                    _clear_staged(upload_batch)
+
+                    # Mensajes
+                    parts = []
+                    if leader.file_upload:
+                        parts.append("main file attached")
+                    if leader.link_or_file:
+                        parts.append("main link added")
+                    if created_files:
+                        parts.append(f"{created_files} additional file(s) added")
+                    if created_links:
+                        parts.append(f"{created_links} additional link(s) added")
+
+                    messages.success(request, "Source created: " + ", ".join(parts) + ".")
+                    return redirect("view_event", event_id=leader.event_id)
+
+        # Si hay errores: re-render con staged visibles (no se pierden)
+        existing_summaries = list(Source.objects.filter(event=event).values_list("summary", flat=True))
+        staged_main, staged_extras = _get_staged(upload_batch)
+        return render(
+            request,
+            "tracker/add_source.html",
+            {
+                "form": form,
+                "event": event,
+                "cancel_url": cancel_url,
+                "existing_summaries_json": json.dumps(existing_summaries),
+                "upload_batch": upload_batch,
+                "staged_main": staged_main,
+                "staged_extras": staged_extras,
+            },
+        )
+
+    # GET inicial
     existing_summaries = list(Source.objects.filter(event=event).values_list("summary", flat=True))
     return render(
         request,
         "tracker/add_source.html",
         {
-            "form": form,
+            "form": SourceForm(initial={"event": event}),
             "event": event,
             "cancel_url": cancel_url,
             "existing_summaries_json": json.dumps(existing_summaries),
+            "upload_batch": upload_batch,
+            "staged_main": None,
+            "staged_extras": [],
         },
     )
 
 
-class SourceUpdateView(LoginRequiredMixin, UpdateView):
-    """Editar Source: login-only (ya no admin-only)."""
+class SourceUpdateView(AdminRequiredMixin, UpdateView):
     model = Source
     form_class = SourceForm
     template_name = "tracker/source_edit.html"
@@ -1075,11 +1216,9 @@ def edit_source(request, pk):
     )
 
 
-@login_required
+@admin_required
 def toggle_source_active(request, pk):
-    """Archive/restore: login-only (POST esperado)."""
     if request.method != "POST":
-        # Si te llega por GET desde un link, puedes permitirlo o redirigir con mensaje:
         messages.error(request, "Invalid method.")
         return redirect('source_detail', pk=pk)
 
@@ -1090,7 +1229,7 @@ def toggle_source_active(request, pk):
     return redirect('source_detail', pk=source.pk)
 
 
-class SourceDeleteView(LoginRequiredMixin, DeleteView):
+class SourceDeleteView(AdminRequiredMixin, DeleteView):
     """
     'Delete' de Source hace soft-delete (archive). Login-only para alinearse
     con el requerimiento de que cualquier usuario registrado pueda archivar.
@@ -1148,20 +1287,26 @@ def get_events(request):
 # =========================================================
 # Auth & Misceláneos
 # =========================================================
-
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
 def register(request):
+    """
+    Solo superusuarios: crean cuentas desde la UI.
+    NO hace login automático del nuevo usuario para no sacar al admin.
+    """
     if request.method == 'POST':
         form = RegisterForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            messages.success(request, "Registration successful")
+            new_user = form.save(commit=False)
+            # opcional: puedes forzar activo si lo deseas
+            new_user.is_active = True
+            new_user.save()
+            messages.success(request, f'User “{new_user.username}” created successfully.')
             return redirect('dashboard')
         messages.error(request, "Please correct the errors below.")
     else:
         form = RegisterForm()
     return render(request, 'registration/register.html', {'form': form})
-
 
 @user_passes_test(lambda u: u.is_superuser)
 @login_required
@@ -1176,3 +1321,41 @@ def custom_logout(request):
     return redirect('login')
 
 
+def _stage_incoming_files(request, batch_id: str, user):
+    """Guarda en TempUpload cualquier archivo que venga en este POST."""
+    # Main file (opcional)
+    f = request.FILES.get("file_upload")
+    staged_main_id = None
+    if f:
+        if _ext_ok(f):
+            # Solo uno: si ya había main staged, lo reemplazamos
+            TempUpload.objects.filter(batch_id=batch_id, kind="MAIN").delete()
+            tu = TempUpload.objects.create(
+                batch_id=batch_id, user=user, file=f, original_name=getattr(f, "name", "file"), kind="MAIN"
+            )
+            staged_main_id = tu.id
+        else:
+            # dejamos que el form muestre error normal; NO guardamos
+            pass
+
+    # Extra files (pueden ser varios)
+    for ef in request.FILES.getlist("extra_files"):
+        if _ext_ok(ef):
+            TempUpload.objects.create(
+                batch_id=batch_id, user=user, file=ef, original_name=getattr(ef, "name", "file"), kind="EXTRA"
+            )
+    return staged_main_id
+
+
+def _get_staged(batch_id: str):
+    """Devuelve (main: TempUpload|None, extras: list[TempUpload])."""
+    main = TempUpload.objects.filter(batch_id=batch_id, kind="MAIN").first()
+    extras = list(TempUpload.objects.filter(batch_id=batch_id, kind="EXTRA"))
+    return main, extras
+
+
+def _clear_staged(batch_id: str, only_ids: list[int] | None = None):
+    qs = TempUpload.objects.filter(batch_id=batch_id)
+    if only_ids:
+        qs = qs.filter(id__in=only_ids)
+    qs.delete()

@@ -1,84 +1,168 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
-  <!-- Título consistente -->
-  <h2 class="my-4">
-    <i class="fas fa-calendar-alt me-2"></i>All Events
-  </h2>
-
+<div class="container mt-4">
   <div class="card border-0 shadow-sm">
     <div class="card-header bg-primary text-white">
       <div class="d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Event List</h5>
-        <a href="{% url 'add_event_redirect' %}" class="btn btn-light btn-sm">
-          <i class="fas fa-plus me-1"></i> New Event
-        </a>
+
+        <div class="d-flex align-items-center gap-3">
+          <!-- Toggle Show archived (visible a todos) -->
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="toggleArchived"
+                   {% if request.GET.show_archived == '1' %}checked{% endif %}>
+            <label class="form-check-label text-white" for="toggleArchived">Show archived</label>
+          </div>
+
+          {% if request.user.is_authenticated and request.user.is_staff %}
+            <a href="{% url 'add_event_redirect' %}" class="btn btn-light btn-sm fw-semibold">
+              <i class="fas fa-plus me-1"></i> New Event
+            </a>
+          {% elif request.user.is_authenticated and request.user.is_superuser %}
+            <a href="{% url 'add_event_redirect' %}" class="btn btn-light btn-sm fw-semibold">
+              <i class="fas fa-plus me-1"></i> New Event
+            </a>
+          {% endif %}
+        </div>
       </div>
     </div>
 
     <div class="card-body">
-      <!-- DataTables genera su propio buscador/length selector -->
       <div class="table-responsive">
         <table class="table table-hover align-middle" id="eventsTable" style="width:100%;">
           <thead class="table-light">
             <tr>
               <th>Event Name</th>
-              <th class="no-sort">Threat</th>
+              <th>Threat</th>
               <th>Date Identified</th>
-              <th>Status</th>
-              <th>Risk</th>
-              <th class="no-sort" style="width:160px;">Actions</th>
+              <th>Risk Rating</th>
+              <th>Status</th>  {# Active / Archived #}
+              {% if request.user.is_authenticated and request.user.is_staff %}
+                <th class="no-sort" style="width:220px;">Actions</th>
+              {% elif request.user.is_authenticated and request.user.is_superuser %}
+                <th class="no-sort" style="width:220px;">Actions</th>
+              {% endif %}
             </tr>
           </thead>
+
           <tbody>
             {% for event in events %}
-            <tr class="event-row" data-href="{% url 'view_event' event_id=event.pk %}">
-              <!-- NAME (ordenable) -->
-              <td>
+            <tr class="event-item {% if event.is_active is not None and not event.is_active %}table-light text-muted{% endif %}"
+                data-href="{% url 'view_event' event_id=event.pk %}">
+              <td class="fw-semibold">
                 <a href="{% url 'view_event' event_id=event.pk %}" class="text-decoration-none">
                   {{ event.name }}
                 </a>
               </td>
-
-              <!-- THREAT (NO ordenable) -->
               <td>{{ event.theme.name }}</td>
-
-              <!-- DATE (ordenable por el texto ISO mostrado) -->
-              <td data-order="{{ event.date_identified|date:'Ymd' }}">
-                {{ event.date_identified|date:"Y-m-d" }}
-              </td>
-
-              <!-- STATUS (ordenable por texto) -->
-              <td>{{ event.get_status_display }}</td>
-
-              <!-- RISK con colores consistentes -->
+              <td>{{ event.date_identified|date:"Y-m-d" }}</td>
               <td>
                 <span class="badge bg-{{ event.get_risk_color }}">
                   {{ event.get_risk_rating_display }}
                 </span>
               </td>
-
-              <!-- ACTIONS (NO ordenable) -->
               <td>
-                <div class="btn-group btn-group-sm">
-                  <a href="{% url 'view_event' event_id=event.pk %}" class="btn btn-outline-primary" title="View">
-                    <i class="fas fa-eye"></i>
-                  </a>
-                  <a href="{% url 'edit_event' pk=event.pk %}" class="btn btn-outline-warning" title="Edit">
-                    <i class="fas fa-edit"></i>
-                  </a>
-                  <a href="{% url 'add_source' event_pk=event.pk %}" class="btn btn-primary" title="Add Source">
-                    <i class="fas fa-plus"></i>
-                  </a>
-                </div>
+                {% if event.is_active %}
+                  <span class="badge bg-success">Active</span>
+                {% else %}
+                  <span class="badge bg-secondary">Archived</span>
+                {% endif %}
               </td>
+
+              {% if request.user.is_authenticated and request.user.is_staff %}
+                <td>
+                  <div class="d-flex gap-2">
+                    <!-- View -->
+                    <a href="{% url 'view_event' event_id=event.pk %}"
+                       class="btn btn-outline-primary btn-sm btn-square"
+                       data-bs-toggle="tooltip" title="View">
+                      <i class="fas fa-eye"></i>
+                    </a>
+
+                    <!-- Edit -->
+                    <a href="{% url 'edit_event' pk=event.pk %}"
+                       class="btn btn-outline-warning btn-sm btn-square"
+                       data-bs-toggle="tooltip" title="Edit">
+                      <i class="fas fa-pen"></i>
+                    </a>
+
+                    <!-- Add Source -->
+                    <a href="{% url 'add_source' event_pk=event.pk %}"
+                       class="btn btn-primary btn-sm btn-square"
+                       data-bs-toggle="tooltip" title="Add Source">
+                      <i class="fas fa-plus"></i>
+                    </a>
+
+                    <!-- Archive / Restore (POST) -->
+                    <form action="{% url 'toggle_event_active' pk=event.pk %}" method="post" class="d-inline">
+                      {% csrf_token %}
+                      {% if event.is_active %}
+                        <button type="submit"
+                                class="btn btn-outline-danger btn-sm btn-square"
+                                data-bs-toggle="tooltip" title="Archive"
+                                onclick="return confirm('Archive this event? You can restore it later.');">
+                          <i class="fas fa-archive"></i>
+                        </button>
+                      {% else %}
+                        <button type="submit"
+                                class="btn btn-outline-success btn-sm btn-square"
+                                data-bs-toggle="tooltip" title="Restore"
+                                onclick="return confirm('Restore this event?');">
+                          <i class="fas fa-rotate-left"></i>
+                        </button>
+                      {% endif %}
+                    </form>
+                  </div>
+                </td>
+              {% elif request.user.is_authenticated and request.user.is_superuser %}
+                <td>
+                  <div class="d-flex gap-2">
+                    <a href="{% url 'view_event' event_id=event.pk %}"
+                       class="btn btn-outline-primary btn-sm btn-square"
+                       data-bs-toggle="tooltip" title="View">
+                      <i class="fas fa-eye"></i>
+                    </a>
+                    <a href="{% url 'edit_event' pk=event.pk %}"
+                       class="btn btn-outline-warning btn-sm btn-square"
+                       data-bs-toggle="tooltip" title="Edit">
+                      <i class="fas fa-pen"></i>
+                    </a>
+                    <a href="{% url 'add_source' event_pk=event.pk %}"
+                       class="btn btn-primary btn-sm btn-square"
+                       data-bs-toggle="tooltip" title="Add Source">
+                      <i class="fas fa-plus"></i>
+                    </a>
+                    <form action="{% url 'toggle_event_active' pk=event.pk %}" method="post" class="d-inline">
+                      {% csrf_token %}
+                      {% if event.is_active %}
+                        <button type="submit" class="btn btn-outline-danger btn-sm btn-square"
+                                data-bs-toggle="tooltip" title="Archive"
+                                onclick="return confirm('Archive this event? You can restore it later.');">
+                          <i class="fas fa-archive"></i>
+                        </button>
+                      {% else %}
+                        <button type="submit" class="btn btn-outline-success btn-sm btn-square"
+                                data-bs-toggle="tooltip" title="Restore"
+                                onclick="return confirm('Restore this event?');">
+                          <i class="fas fa-rotate-left"></i>
+                        </button>
+                      {% endif %}
+                    </form>
+                  </div>
+                </td>
+              {% endif %}
             </tr>
             {% empty %}
             <tr>
-              <td colspan="6" class="text-center py-4">
+              <td colspan="{% if request.user.is_authenticated and request.user.is_staff %}6{% elif request.user.is_authenticated and request.user.is_superuser %}6{% else %}5{% endif %}"
+                  class="text-center py-4">
                 No events found.
-                <a href="{% url 'add_event_redirect' %}" class="ms-2">Create one?</a>
+                {% if request.user.is_authenticated and request.user.is_staff %}
+                  <a href="{% url 'add_event_redirect' %}" class="ms-1">Create one?</a>
+                {% elif request.user.is_authenticated and request.user.is_superuser %}
+                  <a href="{% url 'add_event_redirect' %}" class="ms-1">Create one?</a>
+                {% endif %}
               </td>
             </tr>
             {% endfor %}
@@ -88,58 +172,149 @@
     </div>
   </div>
 </div>
+
+<style>
+  .card > .card-body { padding-top: 1rem; padding-bottom: 1rem; }
+  .table-hover tbody tr:hover { background: #fafbfd; }
+
+  /* Ocultar flechas sort en columnas no ordenables */
+  #eventsTable th.no-sort.sorting:before,
+  #eventsTable th.no-sort.sorting:after,
+  #eventsTable th.no-sort.sorting_asc:before,
+  #eventsTable th.no-sort.sorting_asc:after,
+  #eventsTable th.no-sort.sorting_desc:before,
+  #eventsTable th.no-sort.sorting_desc:after,
+  #eventsTable th.no-sort.sorting_disabled:before,
+  #eventsTable th.no-sort.sorting_disabled:after { display: none !important; }
+  #eventsTable th.no-sort { pointer-events: none; }
+
+  /* Botones cuadrados tipo icon-only */
+  .btn-square{
+    width: 36px; height: 36px; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-width: 2px; border-radius: .5rem;
+  }
+
+  /* ====== Layout superior/inferior de DataTables ====== */
+  #eventsTable_wrapper .dt-top,
+  #eventsTable_wrapper .dt-bottom {
+    gap: .75rem;
+  }
+
+  /* Alinear label + control horizontalmente (length y filter) */
+  #eventsTable_wrapper .dataTables_length,
+  #eventsTable_wrapper .dataTables_filter {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0;
+  }
+
+  /* Inputs compactos ya se aplican vía JS con clases Bootstrap */
+  #eventsTable_wrapper .dataTables_filter input[type="search"] {
+    min-width: 200px;
+  }
+
+  /* Responsive: apilar arriba en móviles */
+  @media (max-width: 576px) {
+    #eventsTable_wrapper .dt-top {
+      flex-direction: column;
+      align-items: stretch;
+      gap: .5rem;
+    }
+    #eventsTable_wrapper .dataTables_filter {
+      justify-content: flex-start;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block scripts %}
-<style>
-/* Oculta las flechas de sort en columnas sin orden (Threat, Actions) y desactiva clic */
-#eventsTable th.no-sort.sorting:before,
-#eventsTable th.no-sort.sorting:after,
-#eventsTable th.no-sort.sorting_asc:before,
-#eventsTable th.no-sort.sorting_asc:after,
-#eventsTable th.no-sort.sorting_desc:before,
-#eventsTable th.no-sort.sorting_desc:after,
-#eventsTable th.no-sort.sorting_disabled:before,
-#eventsTable th.no-sort.sorting_disabled:after {
-  display: none !important;
-}
-#eventsTable th.no-sort { pointer-events: none; }
-
-/* Si aún no lo tienes en base.html, define el naranja */
-.bg-orange { background-color:#fd7e14 !important; color:#fff !important; }
-</style>
-
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  const dt = $('#eventsTable').DataTable({
-    // Coloca "Show _MENU_" a la izquierda y "Search" a la derecha (consistente)
-    dom: "<'row'<'col-md-6'l><'col-md-6'f>>" + "rtip",
-    autoWidth: false,
-    order: [],          // sin orden inicial forzado
-    pageLength: 10,     // arranque en 10 (selector permite cambiar)
-    lengthMenu: [[5,10,20,-1], [5,10,20,'All']],
-    columnDefs: [
-      // Threat (1) y Actions (5) NO ordenables
-      { targets: 1, orderable: false, className: 'no-sort' },
-      { targets: 5, orderable: false, searchable: false, className: 'no-sort' },
-      // Date (2): ya enviamos data-order="YYYYMMDD" para ordenar bien
-    ],
-    language: {
-      search: "Search:",
-      lengthMenu: "Show _MENU_",
-      info: "Showing _START_ to _END_ of _TOTAL_ events",
-      infoEmpty: "Showing 0 to 0 of 0 events",
-      emptyTable: "No events available",
-      paginate: { first: "First", last: "Last", next: "Next", previous: "Previous" }
-    }
-  });
+  // Toggle archived -> actualiza la URL
+  (function () {
+    const chk = document.getElementById('toggleArchived');
+    if (!chk) return;
+    chk.addEventListener('change', function () {
+      const url = new URL(window.location.href);
+      if (this.checked) url.searchParams.set('show_archived', '1');
+      else url.searchParams.delete('show_archived');
+      window.location = url.toString();
+    });
+  })();
 
-  // Navegar al detalle al hacer click en la fila (excepto en los botones)
-  $('#eventsTable tbody').on('click', 'tr', function (e) {
-    if ($(e.target).closest('a,button,.btn').length) return;
-    const href = $(this).attr('data-href');
-    if (href) window.location = href;
+  // Inicializar tooltips
+  if (window.bootstrap) {
+    const tips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tips.forEach(el => new bootstrap.Tooltip(el));
+  }
+
+  // helper para ordenar por texto visible (badges, etc.)
+  function plainText(data) {
+    const div = document.createElement('div');
+    div.innerHTML = data == null ? '' : data;
+    return (div.textContent || div.innerText || '').trim();
+  }
+
+  // Booleano JS sin paréntesis (evita TemplateSyntaxError)
+  const SHOW_EVENT_ACTIONS =
+    {% if request.user.is_authenticated and request.user.is_staff %}true
+    {% elif request.user.is_authenticated and request.user.is_superuser %}true
+    {% else %}false{% endif %};
+
+  // DataTables
+  (function () {
+    if (!(window.jQuery && $.fn.DataTable)) return;
+
+    const columnDefs = [
+      { targets: 0, orderable: true }, // Event Name
+      { targets: 1, orderable: true, render: (d,t)=> (t==='sort'||t==='type')?plainText(d):d }, // Threat
+      { targets: 2, orderable: true }, // Date
+      { targets: 3, orderable: true, render: (d,t)=> (t==='sort'||t==='type')?plainText(d):d }, // Risk
+      { targets: 4, orderable: true, render: (d,t)=> (t==='sort'||t==='type')?plainText(d):d }  // Status (Active/Archived)
+    ];
+    if (SHOW_EVENT_ACTIONS) {
+      columnDefs.push({ targets: -1, orderable: false, searchable: false, className: 'no-sort' });
+    }
+
+    const dt = $('#eventsTable').DataTable({
+      // Top: length (l) + filter (f) en la MISMA fila
+      // Middle: table (t)
+      // Bottom: info (i) + paging (p)
+      dom: "<'dt-top d-flex justify-content-between align-items-center mb-2'lf>" +
+           "t" +
+           "<'dt-bottom d-flex justify-content-between align-items-center mt-2'ip>",
+      autoWidth: false,
+      order: [[2, 'desc']],
+      pageLength: 10,
+      lengthMenu: [[10,25,50,-1],[10,25,50,'All']],
+      columnDefs: columnDefs,
+      language: {
+        search: "Search:",
+        lengthMenu: "Show <strong>_MENU_</strong> events",
+        info: "Showing _START_ to _END_ of _TOTAL_ <strong>events</strong>",
+        infoEmpty: "Showing 0 to 0 of 0 <strong>events</strong>",
+        emptyTable: "No events available",
+        paginate: { first: "First", last: "Last", next: "Next", previous: "Previous" }
+      }
+    });
+
+    // Estilizar controles con clases Bootstrap compactas
+    $('#eventsTable_length select').addClass('form-select form-select-sm');
+    $('#eventsTable_filter input')
+      .addClass('form-control form-control-sm')
+      .attr('placeholder','Search events...');
+  })();
+
+  // Click en fila para navegar (sin interferir con botones/enlaces)
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('#eventsTable tbody tr[data-href]').forEach(function (row) {
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function (e) {
+        if (e.target.closest('a,button,.btn')) return;
+        window.location = row.getAttribute('data-href');
+      });
+    });
   });
-});
 </script>
 {% endblock %}

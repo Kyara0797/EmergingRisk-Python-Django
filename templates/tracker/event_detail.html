@@ -1,18 +1,48 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container mt-4" id="event-detail">
   <div class="card">
-    <div class="card-header bg-primary text-white">
-      <div class="d-flex justify-content-between align-items-center">
+
+    <!-- Header azul con acciones alineadas a la derecha -->
+    <div class="card-header bg-primary text-white header-on-primary">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h4 class="mb-0">{{ event.name }}</h4>
-        <div>
-          <a href="{% url 'edit_event' pk=event.id %}" class="btn btn-warning btn-sm">
-            <i class="fas fa-edit"></i> Edit
+
+        <!-- Grupo de acciones -->
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <a href="{% url 'view_theme' pk=event.theme.id %}" class="btn btn-light btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Back to Threat
           </a>
-          <a href="{% url 'add_source' event_pk=event.id %}" class="btn btn-light btn-sm">
-            <i class="fas fa-plus"></i> Add Source
-          </a>
+
+          {% if is_admin %}
+            <a href="{% url 'edit_event' pk=event.id %}"
+               class="btn btn-warning btn-sm" data-bs-toggle="tooltip" title="Edit">
+              <i class="fas fa-edit"></i> Edit
+            </a>
+
+            <!-- ✅ ahora azul -->
+            <a href="{% url 'add_source' event_pk=event.id %}"
+               class="btn btn-primary btn-sm" data-bs-toggle="tooltip" title="Add Source">
+              <i class="fas fa-plus"></i> Source
+            </a>
+
+            <!-- Archive / Restore con redirección inteligente -->
+            <form action="{% url 'toggle_event_active' pk=event.id %}" method="post" class="d-inline">
+              {% csrf_token %}
+              <input type="hidden" name="next"
+                     value="{% if event.is_active %}{% url 'view_theme' pk=event.theme.id %}{% else %}{% url 'view_event' event_id=event.id %}{% endif %}">
+              {% if event.is_active %}
+                <button type="submit" class="btn btn-outline-danger btn-sm" data-bs-toggle="tooltip" title="Archive">
+                  <i class="fas fa-archive"></i> Archive
+                </button>
+              {% else %}
+                <button type="submit" class="btn btn-outline-success btn-sm" data-bs-toggle="tooltip" title="Restore">
+                  <i class="fas fa-rotate-left"></i> Restore
+                </button>
+              {% endif %}
+            </form>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -22,9 +52,7 @@
       <div class="event-details-container mb-4 p-3 bg-light rounded">
         <h5 class="mb-3 border-bottom pb-2">Event Details</h5>
 
-        <!-- Fila 1 -->
         <div class="row">
-          <!-- Threat -->
           <div class="col-md-3 mb-3">
             <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
               <div class="d-flex align-items-center mb-2">
@@ -37,7 +65,6 @@
             </div>
           </div>
 
-          <!-- Date Identified -->
           <div class="col-md-3 mb-3">
             <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
               <div class="d-flex align-items-center mb-2">
@@ -48,7 +75,6 @@
             </div>
           </div>
 
-          <!-- Risk Rating -->
           <div class="col-md-3 mb-3">
             <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
               <div class="d-flex align-items-center mb-2">
@@ -61,21 +87,22 @@
             </div>
           </div>
 
-          <!-- Status -->
           <div class="col-md-3 mb-3">
             <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
               <div class="d-flex align-items-center mb-2">
                 <i class="fas fa-tasks text-success me-2"></i>
                 <strong class="text-muted">Status</strong>
               </div>
-              <p class="mb-0 fw-bold">{{ event.get_status_display }}</p>
+              {% if event.is_active %}
+                <span class="badge bg-success p-2">Active</span>
+              {% else %}
+                <span class="badge bg-secondary p-2">Archived</span>
+              {% endif %}
             </div>
           </div>
         </div>
 
-        <!-- Fila 2 -->
         <div class="row mt-2">
-          <!-- Controls in Place -->
           <div class="col-md-3 mb-3">
             <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
               <div class="d-flex align-items-center mb-2">
@@ -92,7 +119,6 @@
             </div>
           </div>
 
-          <!-- Impacted LOB (columna central) -->
           <div class="col-md-6 mb-3">
             <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
               <div class="d-flex align-items-center mb-2">
@@ -111,7 +137,6 @@
             </div>
           </div>
 
-          <!-- Source Count (bundles) -->
           <div class="col-md-3 mb-3">
             <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
               <div class="d-flex align-items-center mb-2">
@@ -128,7 +153,6 @@
       <div class="risk-taxonomy-container mb-4 p-3 bg-light rounded">
         <h5 class="mb-3 border-bottom pb-2">Risk Taxonomy</h5>
         <div class="row">
-          <!-- Lv1 -->
           <div class="col-md-4 mb-3">
             <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
               <div class="d-flex align-items-center mb-2">
@@ -147,7 +171,6 @@
             </div>
           </div>
 
-          <!-- Lv2 -->
           <div class="col-md-4 mb-3">
             <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
               <div class="d-flex align-items-center mb-2">
@@ -166,7 +189,6 @@
             </div>
           </div>
 
-          <!-- Lv3 -->
           <div class="col-md-4 mb-3">
             <div class="detail-card p-3 h-100 bg-white rounded shadow-sm">
               <div class="d-flex align-items-center mb-2">
@@ -187,44 +209,29 @@
         </div>
       </div>
 
-      <!-- Description -->
-      <div class="row mb-4">
-        <div class="col-12">
-          <div class="description-container p-3 bg-light rounded">
-            <h5 class="mb-3 border-bottom pb-2">Description</h5>
-            <div class="p-3 bg-white rounded shadow-sm">
-              {{ event.description|linebreaks }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Sources (agrupados por bundle) -->
-      <div class="mt-4">
+      <!-- Sources (bundles) -->
+      <div class="mt-4" id="sources">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5 class="mb-0">Sources <span class="text-muted">({{ bundle_count }})</span></h5>
 
-          <form method="get" class="d-flex align-items-center gap-2">
-            <select name="source_type" class="form-select form-select-sm" onchange="this.form.submit()">
+          <div class="d-flex align-items-center gap-2" id="sourcesFilters">
+            <select id="sourceTypeSelect" class="form-select form-select-sm">
               {% for val,label in bundle_type_choices %}
-                <option value="{{ val }}" {% if selected_source_type == val %}selected{% endif %}>
-                  {{ label }}
-                </option>
+                <option value="{{ val }}" {% if selected_source_type == val %}selected{% endif %}>{{ label }}</option>
               {% endfor %}
             </select>
 
             <div class="form-check ms-2">
-              <input class="form-check-input" type="checkbox" id="showArchived" name="show_archived" value="1"
-                     {% if show_archived %}checked{% endif %} onchange="this.form.submit()">
+              <input class="form-check-input" type="checkbox" id="showArchived" value="1" {% if show_archived %}checked{% endif %}>
               <label class="form-check-label" for="showArchived">Show archived</label>
             </div>
 
-            {% if selected_source_type or show_archived %}
-              <a href="{% url 'view_event' event_id=event.id %}" class="btn btn-sm btn-outline-secondary ms-2">
+            {% if selected_source_type != 'ALL' or show_archived %}
+              <a href="{% url 'view_event' event_id=event.id %}#sources" class="btn btn-sm btn-outline-secondary ms-2">
                 Clear
               </a>
             {% endif %}
-          </form>
+          </div>
         </div>
 
         {% if source_bundles %}
@@ -238,7 +245,7 @@
                   <th>Potential Impact</th>
                   <th>Items</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  {% if is_admin %}<th class="no-sort">Actions</th>{% endif %}
                 </tr>
               </thead>
               <tbody>
@@ -293,6 +300,7 @@
                     {% endif %}
                   </td>
 
+                  {% if is_admin %}
                   <td class="text-nowrap">
                     <a href="{% url 'source_detail' pk=source.id %}" class="btn btn-sm btn-outline-primary" title="View">
                       <i class="fas fa-eye"></i>
@@ -300,22 +308,27 @@
                     <a href="{% url 'edit_source' pk=source.id %}" class="btn btn-sm btn-outline-warning" title="Edit">
                       <i class="fas fa-edit"></i>
                     </a>
-                    {% if b.any_active %}
-                      <a href="{% url 'toggle_source_active' pk=source.id %}"
-                         class="btn btn-sm btn-outline-danger"
-                         title="Archive"
-                         onclick="return confirm('Archive this source bundle? You can show it again using \"Show archived\".');">
-                        <i class="fas fa-archive"></i>
-                      </a>
-                    {% else %}
-                      <a href="{% url 'toggle_source_active' pk=source.id %}"
-                         class="btn btn-sm btn-outline-success"
-                         title="Restore"
-                         onclick="return confirm('Restore this source bundle?');">
-                        <i class="fas fa-rotate-left"></i>
-                      </a>
-                    {% endif %}
+
+                    <form action="{% url 'toggle_source_active' pk=source.id %}" method="post" class="d-inline">
+                      {% csrf_token %}
+                      {% if b.any_active %}
+                        <button type="submit"
+                                class="btn btn-sm btn-outline-danger"
+                                title="Archive"
+                                onclick="return confirm('Archive this source bundle? You can show it again using \"Show archived\".');">
+                          <i class="fas fa-archive"></i>
+                        </button>
+                      {% else %}
+                        <button type="submit"
+                                class="btn btn-sm btn-outline-success"
+                                title="Restore"
+                                onclick="return confirm('Restore this source bundle?');">
+                          <i class="fas fa-rotate-left"></i>
+                        </button>
+                      {% endif %}
+                    </form>
                   </td>
+                  {% endif %}
                 </tr>
                 {% endwith %}
               {% endfor %}
@@ -324,7 +337,10 @@
           </div>
         {% else %}
           <div class="alert alert-info">
-            No sources found. <a href="{% url 'add_source' event_pk=event.id %}">Add the first source</a>
+            No sources found.
+            {% if is_admin %}
+              <a href="{% url 'add_source' event_pk=event.id %}">Add the first source</a>
+            {% endif %}
           </div>
         {% endif %}
       </div>
@@ -344,37 +360,94 @@
   .scroll-container::-webkit-scrollbar-thumb{background:#a8a8a8;border-radius:4px}
   .scroll-container::-webkit-scrollbar-thumb:hover{background:#888}
   .taxonomy-items .badge{font-size:.75rem;padding:.35em .65em;margin:.15rem;display:inline-block;white-space:normal;word-break:break-word;max-width:100%}
+
+  /* DataTables: ocultar flechas en columnas no ordenables */
+  #sourcesTable th.no-sort.sorting:before,
+  #sourcesTable th.no-sort.sorting:after,
+  #sourcesTable th.no-sort.sorting_asc:before,
+  #sourcesTable th.no-sort.sorting_asc:after,
+  #sourcesTable th.no-sort.sorting_desc:before,
+  #sourcesTable th.no-sort.sorting_desc:after,
+  #sourcesTable th.no-sort.sorting_disabled:before,
+  #sourcesTable th.no-sort.sorting_disabled:after { display: none !important; }
+  #sourcesTable th.no-sort { pointer-events: none; }
+
+  /* Contraste y legibilidad sobre fondo azul */
+  .header-on-primary .btn { box-shadow: none; }
+  .header-on-primary .btn-light{
+    color:#0d6efd; background:#fff; border-color:rgba(255,255,255,.85);
+  }
+  .header-on-primary .btn-warning{
+    color:#212529; border-color:rgba(0,0,0,.1);
+  }
+  .header-on-primary .btn-outline-danger,
+  .header-on-primary .btn-outline-success{
+    border-width:1.5px; background:transparent;
+  }
+  /* ✅ Ensancha el borde del btn-primary para que destaque sobre el header azul */
+  .header-on-primary .btn-primary{
+    border-color: rgba(255,255,255,.7);
+  }
 </style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // Fila clicable (sin interferir con botones/links dentro)
+  // Fila clicable (sin interferir con botones/enlaces/form)
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('#sourcesTable tbody tr[data-href]').forEach(function (row) {
       row.style.cursor = 'pointer';
       row.addEventListener('click', function (e) {
-        if (e.target.closest('a,button,.btn')) return;
+        if (e.target.closest('a,button,.btn,form')) return;
         window.location = row.getAttribute('data-href');
       });
     });
   });
 
-  // DataTables (si está disponible)
+  // Mantener #sources al cambiar filtros
+  (function(){
+    const sel = document.getElementById('sourceTypeSelect');
+    const chk = document.getElementById('showArchived');
+    function go(){
+      const u = new URL(window.location.href);
+      if (sel && sel.value && sel.value !== 'ALL') u.searchParams.set('source_type', sel.value);
+      else u.searchParams.delete('source_type');
+      if (chk && chk.checked) u.searchParams.set('show_archived','1');
+      else u.searchParams.delete('show_archived');
+      u.hash = 'sources';
+      window.location = u.toString();
+    }
+    sel && sel.addEventListener('change', go);
+    chk && chk.addEventListener('change', go);
+  })();
+
+  const SHOW_SOURCE_ACTIONS = {{ is_admin|yesno:"true,false" }};
+
+  // DataTables
   if (window.jQuery && $.fn.DataTable) {
     $(function () {
-      $('#sourcesTable').DataTable({
+      const columnDefs = [];
+      if (SHOW_SOURCE_ACTIONS) {
+        columnDefs.push({ targets: -1, orderable: false, searchable: false, className: 'no-sort' });
+      }
+      const dt = $('#sourcesTable').DataTable({
         order: [[2,'desc']],
+        pageLength: 10,
+        lengthMenu: [[10,20,50,-1],[10,20,50,'All']],
+        columnDefs: columnDefs,
         language: {
           emptyTable: 'No sources available',
-          info: 'Showing _START_ to _END_ of _TOTAL_ sources',
-          infoEmpty: 'Showing 0 to 0 of 0 sources',
+          info: 'Showing _START_ to _END_ of _TOTAL_ <strong>sources</strong>',
+          infoEmpty: 'Showing 0 to 0 of 0 <strong>sources</strong>',
           infoFiltered: '(filtered from _MAX_ total sources)',
-          lengthMenu: 'Show _MENU_ sources',
+          lengthMenu: 'Show _MENU_ <strong>sources</strong>',
           search: 'Search sources:',
           paginate: { first: 'First', last: 'Last', next: 'Next', previous: 'Previous' }
         }
       });
+
+      // mover buscador a la derecha (opcional)
+      $('#sourcesTable_wrapper').find('.dataTables_filter').addClass('ms-auto');
     });
   }
 </script>

@@ -70,4 +70,8 @@
     transition: opacity 0.3s ease;
 }
 
-.bg-orange { background-color:#fd7e14 !important; color:#fff !important; }
+.bg-orange,
+.badge-orange {
+    background-color: #fd7e14 !important; 
+    color: #fff !important;
+}

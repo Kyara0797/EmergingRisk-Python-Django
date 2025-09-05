@@ -2,199 +2,278 @@
 
 {% block content %}
 <div class="container">
-    <!-- Dynamic title -->
-    <h2 class="my-4">
-        {% if category %}
-        <i class="fas fa-tag me-2"></i>Threat: {{ category.name }}
-        {% else %}
-        <i class="fas fa-list-ul me-2"></i>All Threats
-        {% endif %}
-    </h2>
+  <!-- Dynamic title -->
+  <h2 class="my-4">
+    {% if category %}
+      <i class="fas fa-tag me-2"></i>Threat: {{ category.name }}
+    {% else %}
+      <i class="fas fa-list-ul me-2"></i>All Threats
+    {% endif %}
+  </h2>
 
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Threat List</h5>
-                <a href="{% url 'add_theme' %}{% if category %}?category={{ category.id }}{% endif %}" class="btn btn-light btn-sm">
-                    <i class="fas fa-plus me-1"></i> Add Threat
-                </a>
-            </div>
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Threat List</h5>
+
+        <div class="d-flex align-items-center gap-3">
+          <!-- Toggle Show archived (visible a todos) -->
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="toggleArchived"
+                   {% if request.GET.show_archived == '1' %}checked{% endif %}>
+            <label class="form-check-label text-white" for="toggleArchived">Show archived</label>
+          </div>
+
+          {# Add Threat solo para admins #}
+          {% if is_admin or request.user.is_staff or request.user.is_superuser %}
+            <a href="{% url 'add_theme' %}{% if category %}?category={{ category.id }}{% endif %}"
+               class="btn btn-light btn-sm">
+              <i class="fas fa-plus me-1"></i> Add Threat
+            </a>
+          {% endif %}
         </div>
-
-        <div class="card-body">
-            <!-- Usamos el buscador nativo de DataTables -->
-            <div class="table-responsive">
-                <table class="table table-hover align-middle" id="themesTable" style="width:100%;">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Name</th>
-                            <th class="no-sort">Category</th>
-                            <th>Onset</th>
-                            <th>Risk</th>
-                            <th class="no-sort" style="width:160px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for theme in themes %}
-                        <tr class="theme-item" data-href="{% url 'view_theme' pk=theme.id %}">
-                            <!-- NAME (ordenable) -->
-                            <td>
-                                <a href="{% url 'view_theme' pk=theme.id %}" class="text-decoration-none">
-                                    {{ theme.name }}
-                                </a>
-                            </td>
-
-                            <!-- CATEGORY (NO ordenable) -->
-                            <td>{{ theme.category.name }}</td>
-
-                            <!-- ONSET (orden por el texto mostrado) -->
-                            <td>
-                                {{ theme.get_onset_timeline_display }}
-                            </td>
-
-                            <!-- RISK (orden por el texto mostrado) -->
-                            <td>
-                                <span class="badge bg-{{ theme.get_risk_color }}">
-                                    {{ theme.get_risk_rating_display }}
-                                </span>
-                            </td>
-
-                            <!-- ACTIONS (NO ordenable) -->
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{% url 'edit_theme' theme.id %}" class="btn btn-outline-warning" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="{% url 'add_event' theme.id %}" class="btn btn-outline-primary" title="Add Event">
-                                        <i class="fas fa-plus"></i> Event
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center py-4">
-                                No Threat found.
-                                <a href="{% url 'add_theme' %}{% if category %}?category={{ category.id }}{% endif %}" class="ms-2">Create one?</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        {# Si sólo usarás DataTables, puedes quitar esta paginación del servidor #}
-        {% if is_paginated %}
-        <div class="card-footer bg-white">
-            <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-center mb-0">
-                    {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
-                            Previous
-                        </a>
-                    </li>
-                    {% endif %}
-                    {% for num in page_obj.paginator.page_range %}
-                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-                        <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
-                            {{ num }}
-                        </a>
-                    </li>
-                    {% endfor %}
-                    {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
-                            Next
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </div>
-        {% endif %}
+      </div>
     </div>
+
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle" id="themesTable" style="width:100%;">
+          <thead class="table-light">
+            <tr>
+              <th>Name</th>
+              <th class="no-sort">Category</th>
+              <th>Onset</th>
+              <th>Risk</th>
+              <th>Status</th>
+              {% if is_admin or request.user.is_staff or request.user.is_superuser %}
+                <th class="no-sort" style="width:220px;">Actions</th>
+              {% endif %}
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for theme in themes %}
+            <tr class="theme-item {% if theme.is_active is not None and not theme.is_active %}table-light text-muted{% endif %}"
+                data-href="{% url 'view_theme' pk=theme.id %}">
+              <td>
+                <a href="{% url 'view_theme' pk=theme.id %}" class="text-decoration-none">
+                  {{ theme.name }}
+                </a>
+              </td>
+              <td>{{ theme.category.name }}</td>
+              <td>{{ theme.get_onset_timeline_display }}</td>
+              <td>
+                <span class="badge bg-{{ theme.get_risk_color }}">
+                  {{ theme.get_risk_rating_display }}
+                </span>
+              </td>
+              <td>
+                {% if theme.is_active %}
+                  <span class="badge bg-success">Active</span>
+                {% else %}
+                  <span class="badge bg-secondary">Archived</span>
+                {% endif %}
+              </td>
+
+              {% if is_admin or request.user.is_staff or request.user.is_superuser %}
+                <td>
+                  <div class="d-flex gap-2">
+                    <!-- View -->
+                    <a href="{% url 'view_theme' pk=theme.id %}"
+                       class="btn btn-outline-primary btn-sm btn-square"
+                       data-bs-toggle="tooltip" title="View">
+                      <i class="fas fa-eye"></i>
+                    </a>
+
+                    <!-- Edit -->
+                    <a href="{% url 'edit_theme' theme.id %}"
+                       class="btn btn-outline-warning btn-sm btn-square"
+                       data-bs-toggle="tooltip" title="Edit">
+                      <i class="fas fa-pen"></i>
+                    </a>
+
+                    <!-- Add Event -->
+                    <a href="{% url 'add_event' theme.id %}"
+                       class="btn btn-primary btn-sm btn-square"
+                       data-bs-toggle="tooltip" title="Add Event">
+                      <i class="fas fa-plus"></i>
+                    </a>
+
+                    <!-- Archive / Restore (POST) -->
+                    <form action="{% url 'toggle_theme_active' pk=theme.id %}" method="post" class="d-inline">
+                      {% csrf_token %}
+                      {% if theme.is_active %}
+                        <button type="submit"
+                                class="btn btn-outline-danger btn-sm btn-square"
+                                data-bs-toggle="tooltip" title="Archive"
+                                onclick="return confirm('Archive this threat? You can restore it later.');">
+                          <i class="fas fa-archive"></i>
+                        </button>
+                      {% else %}
+                        <button type="submit"
+                                class="btn btn-outline-success btn-sm btn-square"
+                                data-bs-toggle="tooltip" title="Restore"
+                                onclick="return confirm('Restore this threat?');">
+                          <i class="fas fa-rotate-left"></i>
+                        </button>
+                      {% endif %}
+                    </form>
+                  </div>
+                </td>
+              {% endif %}
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="{% if is_admin or request.user.is_staff or request.user.is_superuser %}6{% else %}5{% endif %}"
+                  class="text-center py-4">
+                No Threat found.
+                {% if is_admin or request.user.is_staff or request.user.is_superuser %}
+                  <a href="{% url 'add_theme' %}{% if category %}?category={{ category.id }}{% endif %}" class="ms-2">
+                    Create one?
+                  </a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if is_paginated %}
+    <div class="card-footer bg-white">
+      <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center mb-0">
+          {% if page_obj.has_previous %}
+          <li class="page-item">
+            <a class="page-link"
+               href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.show_archived %}&show_archived={{ request.GET.show_archived }}{% endif %}">
+              Previous
+            </a>
+          </li>
+          {% endif %}
+          {% for num in page_obj.paginator.page_range %}
+          <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+            <a class="page-link"
+               href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.show_archived %}&show_archived={{ request.GET.show_archived }}{% endif %}">
+              {{ num }}
+            </a>
+          </li>
+          {% endfor %}
+          {% if page_obj.has_next %}
+          <li class="page-item">
+            <a class="page-link"
+               href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.show_archived %}&show_archived={{ request.GET.show_archived }}{% endif %}">
+              Next
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <style>
-/* Oculta flechas de sort en columnas sin orden (Category, Actions) y desactiva clic */
-#themesTable th.no-sort.sorting:before,
-#themesTable th.no-sort.sorting:after,
-#themesTable th.no-sort.sorting_asc:before,
-#themesTable th.no-sort.sorting_asc:after,
-#themesTable th.no-sort.sorting_desc:before,
-#themesTable th.no-sort.sorting_desc:after,
-#themesTable th.no-sort.sorting_disabled:before,
-#themesTable th.no-sort.sorting_disabled:after {
-  display: none !important;
-}
-#themesTable th.no-sort { pointer-events: none; }
+  /* Quitar flechas DataTables en columnas no ordenables y desactivar clic */
+  #themesTable th.no-sort.sorting:before,
+  #themesTable th.no-sort.sorting:after,
+  #themesTable th.no-sort.sorting_asc:before,
+  #themesTable th.no-sort.sorting_asc:after,
+  #themesTable th.no-sort.sorting_desc:before,
+  #themesTable th.no-sort.sorting_desc:after,
+  #themesTable th.no-sort.sorting_disabled:before,
+  #themesTable th.no-sort.sorting_disabled:after { display: none !important; }
+  #themesTable th.no-sort { pointer-events: none; }
+
+  /* Botones cuadrados icon-only */
+  .btn-square{
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-width: 2px;
+    border-radius: .5rem;
+  }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  // helper para extraer texto plano de una celda HTML (sirve para ordenar por el texto visible)
+  // Toggle show_archived → actualizar querystring
+  const toggle = document.getElementById('toggleArchived');
+  if (toggle) {
+    toggle.addEventListener('change', () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('page');
+      if (toggle.checked) url.searchParams.set('show_archived', '1');
+      else url.searchParams.delete('show_archived');
+      window.location = url.toString();
+    });
+  }
+
+  // Tooltips Bootstrap
+  if (window.bootstrap) {
+    const tips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tips.forEach(el => new bootstrap.Tooltip(el));
+  }
+
   function plainText(data) {
     const div = document.createElement('div');
     div.innerHTML = data == null ? '' : data;
     return (div.textContent || div.innerText || '').trim();
   }
 
-  const dt = $('#themesTable').DataTable({
-    autoWidth: false,
-    ordering: true,
-    order: [],            // sin orden inicial forzado
-    pageLength: 10,
-    // Name, Onset y Risk ordenables; Category y Actions NO.
-    columnDefs: [
-      // 0 Name: ordenable por defecto
-      { targets: 0, orderable: true },
+  {% if is_admin or request.user.is_staff or request.user.is_superuser %}
+    const HAS_ACTIONS = true;
+  {% else %}
+    const HAS_ACTIONS = false;
+  {% endif %}
 
-      // 1 Category: NO ordenable
-      { targets: 1, orderable: false, className: 'no-sort' },
-
-      // 2 Onset: ordenar por el TEXTO visible
-      {
-        targets: 2,
-        orderable: true,
-        render: function (data, type) {
-          if (type === 'sort' || type === 'type') return plainText(data);
-          return data;
-        }
-      },
-
-      // 3 Risk: ordenar por el TEXTO visible dentro del badge
-      {
-        targets: 3,
-        orderable: true,
-        render: function (data, type) {
-          if (type === 'sort' || type === 'type') return plainText(data);
-          return data;
-        }
-      },
-
-      // 4 Actions: NO ordenable ni searchable + clase para ocultar flechas
-      { targets: 4, orderable: false, searchable: false, className: 'no-sort' }
-    ],
-    language: {
-      search: "Search:",
-      lengthMenu: "Show _MENU_",
-      info: "Showing _START_ to _END_ of _TOTAL_ threats",
-      infoEmpty: "Showing 0 to 0 of 0 threats",
-      emptyTable: "No threats available",
-      paginate: { first: "First", last: "Last", next: "Next", previous: "Previous" }
+  if (window.jQuery && $.fn.DataTable) {
+    const columnDefs = [
+      { targets: 0, orderable: true },  // Name
+      { targets: 1, orderable: false, className: 'no-sort' }, // Category
+      { targets: 2, orderable: true, render: (d,t)=> (t==='sort'||t==='type')?plainText(d):d }, // Onset
+      { targets: 3, orderable: true, render: (d,t)=> (t==='sort'||t==='type')?plainText(d):d }, // Risk
+      { targets: 4, orderable: true, render: (d,t)=> (t==='sort'||t==='type')?plainText(d):d }  // Status
+    ];
+    if (HAS_ACTIONS) {
+      columnDefs.push({ targets: -1, orderable: false, searchable: false, className: 'no-sort' });
     }
-  });
 
-  // click en fila para ir al detalle (excepto clicks en botones/enlaces)
-  $('#themesTable tbody').on('click', 'tr', function (e) {
-    if ($(e.target).closest('a,button,.btn').length) return;
-    const href = $(this).attr('data-href');
-    if (href) window.location = href;
-  });
+    $('#themesTable').DataTable({
+      autoWidth: false,
+      ordering: true,
+      order: [],
+      pageLength: 10,
+      lengthMenu: [[10,25,50,-1],[10,25,50,'All']],   // opciones (con “All”)
+      columnDefs: columnDefs,
+      language: {
+        search: "Search:",
+        lengthMenu: "Show _MENU_ threats",             // ← texto como la imagen
+        info: "Showing _START_ to _END_ of _TOTAL_ <strong>threats</strong>",
+        infoEmpty: "Showing 0 to 0 of 0 <strong>threats</strong>",
+        emptyTable: "No threats available",
+        paginate: { first: "First", last: "Last", next: "Next", previous: "Previous" }
+      }
+    });
+  }
+
+  // Click en fila para navegar (sin interferir con botones/enlaces)
+  const tbody = document.querySelector('#themesTable tbody');
+  if (tbody) {
+    tbody.addEventListener('click', function (e) {
+      if (e.target.closest('a,button,.btn')) return;
+      const row = e.target.closest('tr.theme-item');
+      const href = row?.getAttribute('data-href');
+      if (href) window.location = href;
+    });
+  }
 });
 </script>
 {% endblock %}

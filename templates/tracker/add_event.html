@@ -1,772 +1,733 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Event</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding: 20px;
-        }
-        .card-header {
-            background-color: #2c3e50 !important;
-            color: white;
-        }
-        .card-subheader {
-            background-color: #e9ecef;
-            border-left: 4px solid #3498db;
-        }
-        .risk-option {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 5px 0;
-        }
-        .risk-color {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-left: 8px;
-        }
-        .risk-low {
-            background-color: #28a745; /* Verde */
-        }
-        .risk-medium {
-            background-color: #ffc107; /* Amarillo */
-        }
-        .risk-high {
-            background-color: #dc3545; /* Rojo */
-        }
-        .risk-critical {
-            background-color: #6c757d; /* Gris oscuro */
-        }
-        .taxonomy-container {
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #dee2e6;
-            border-radius: 0.375rem;
-            padding: 10px;
-        }
-        /* Scroll container styles - MEJORADO */
-        .taxonomy-container {
-            scroll-behavior: smooth;
-        }
-        
-        /* Estilos para la barra de scroll */
-        .taxonomy-container::-webkit-scrollbar {
-            width: 10px;
-        }
-        
-        .taxonomy-container::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-        
-        .taxonomy-container::-webkit-scrollbar-thumb {
-            background: #a8a8a8;
-            border-radius: 4px;
-        }
-        
-        .taxonomy-container::-webkit-scrollbar-thumb:hover {
-            background: #888;
-        }
-        .form-check {
-            margin-bottom: 8px;
-        }
-        .impact-trend {
-            border: 1px solid #dee2e6;
-            border-radius: 0.375rem;
-            padding: 15px;
-            background-color: #f8f9fa;
-        }
-        .risk-rating-container {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .risk-item {
-            display: flex;
-            align-items: center;
-            padding: 8px 12px;
-            border: 1px solid #dee2e6;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .risk-item:hover {
-            background-color: #f8f9fa;
-        }
-        .risk-item.selected {
-            background-color: #e9ecef;
-            border-color: #3498db;
-        }
-        .risk-icon {
-            margin-right: 10px;
-            font-size: 16px;
-        }
-        .hidden {
-            display: none;
-        }
-        .rating-display {
-            display: flex;
-            align-items: center;
-        }
-        .taxonomy-section {
-            transition: all 0.3s ease;
-        }
-        
-        .taxonomy-header {
-            background-color: #e9ecef;
-            padding: 8px 12px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .taxonomy-count {
-            background-color: #6c757d;
-            color: white;
-            border-radius: 12px;
-            padding: 2px 8px;
-            font-size: 0.75rem;
-        }
-        
-        .selected-options {
-            background-color: #e7f3ff;
-            border-left: 4px solid #007bff;
-            padding: 10px;
-            margin-top: 10px;
-            border-radius: 5px;
-            max-height: 120px;
-            overflow-y: auto;
-        }
-        
-        .selected-item {
-            background-color: #d1e7ff;
-            padding: 4px 8px;
-            border-radius: 4px;
-            margin: 3px;
-            font-size: 0.85rem;
-            display: inline-block;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Add Event</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    body{background:#f8f9fa;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:20px}
+    .card-header{background:#2c3e50!important;color:#fff}
+    .card-subheader{background:#e9ecef;border-left:4px solid #3498db}
+    .form-check{margin-bottom:8px}
+
+    /* Risk colors */
+    .risk-color{width:16px;height:16px;border-radius:50%;display:inline-block;margin-left:8px}
+    .risk-low{background:#28a745}.risk-medium{background:#ffc107}.risk-high{background:#dc3545}.risk-critical{background:#6c757d}
+
+    /* Risk tiles */
+    .risk-rating-container{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+    .risk-item{display:flex;align-items:center;padding:8px 12px;border:1px solid #dee2e6;border-radius:6px;cursor:pointer;transition:.2s}
+    .risk-item:hover{background:#f8f9fa}
+    .risk-item.selected{background:#e9ecef;border-color:#3498db}
+    .rating-display{display:flex;align-items:center}
+    .hidden{display:none}
+
+    /* Taxonomy */
+    .taxonomy-section{transition:all .3s ease}
+    .taxonomy-header{background:#e9ecef;padding:8px 12px;border-radius:6px;margin-bottom:10px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+    .taxonomy-count{background:#6c757d;color:#fff;border-radius:12px;padding:2px 8px;font-size:.75rem}
+    .taxonomy-container{max-height:200px;overflow-y:auto;border:1px solid #dee2e6;border-radius:.375rem;padding:10px;scroll-behavior:smooth}
+    .taxonomy-container::-webkit-scrollbar{width:10px}
+    .taxonomy-container::-webkit-scrollbar-track{background:#f1f1f1;border-radius:4px}
+    .taxonomy-container::-webkit-scrollbar-thumb{background:#a8a8a8;border-radius:4px}
+    .taxonomy-container::-webkit-scrollbar-thumb:hover{background:#888}
+    .selected-options{background:#e7f3ff;border-left:4px solid #007bff;padding:10px;margin-top:10px;border-radius:6px;max-height:120px;overflow-y:auto}
+    .selected-item{background:#d1e7ff;padding:4px 8px;border-radius:4px;margin:3px;font-size:.85rem;display:inline-block}
+
+    /* Invalid states */
+    .taxonomy-section.is-invalid .taxonomy-header{border:1px solid #dc3545}
+    .risk-tiles-invalid{border:1px dashed #dc3545;border-radius:8px;padding:6px}
+
+    /* Small attention animation on error */
+    @keyframes shake {
+      10%,90%{transform:translateX(-1px)}
+      20%,80%{transform:translateX(2px)}
+      30%,50%,70%{transform:translateX(-4px)}
+      40%,60%{transform:translateX(4px)}
+    }
+    .shake{animation:shake .4s}
+  </style>
 </head>
 <body>
-    <div class="container py-4">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="card shadow">
-                    <div class="card-header py-3">
-                        <h4 class="m-0"><i class="fas fa-plus-circle me-2"></i>Add New Event</h4>
+  <div class="container py-4">
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="card shadow">
+          <div class="card-header py-3">
+            <h4 class="m-0"><i class="fas fa-plus-circle me-2"></i>Add New Event</h4>
+          </div>
+          <div class="card-body">
+            <form method="post" class="needs-validation" novalidate>
+              <!-- Basic Info -->
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <div class="card h-100">
+                    <div class="card-subheader p-3">
+                      <h5 class="m-0"><i class="fas fa-info-circle me-2"></i>Basic Information</h5>
                     </div>
                     <div class="card-body">
-                        <form method="post" class="needs-validation" novalidate>
-                            <!-- Sección de Información Básica -->
-                            <div class="row mb-4">
-                                <div class="col-md-6">
-                                    <div class="card h-100">
-                                        <div class="card-subheader p-3">
-                                            <h5 class="m-0"><i class="fas fa-info-circle me-2"></i>Basic Information</h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="mb-3">
-                                                <label for="theme" class="form-label">Threat</label>
-                                                <select class="form-select" id="theme" required>
-                                                    <option value="">Select a Threat</option>
-                                                    <option value="1">Test - Economic</option>
-                                                    <option value="2">Test - Environment</option>
-                                                    <option value="3">Test A - Legal</option>
-                                                    <option value="4">Test1 - Environment</option>
-                                                </select>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="name" class="form-label">Event Name</label>
-                                                <input type="text" class="form-control" id="name" required>
-                                                <div class="form-text text-muted text-end"><span id="name-char-count">0</span>/30 characters</div>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="date_identified" class="form-label">Date Identified</label>
-                                                <input type="date" class="form-control" id="date_identified" required>
-                                                <div class="form-text text-muted">Date cannot be in the future</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-md-6">
-                                    <div class="card h-100">
-                                        <div class="card-subheader p-3">
-                                            <h5 class="m-0"><i class="fas fa-tags me-2"></i>Classification</h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="mb-3">
-                                                <label class="form-label">Risk Rating</label>
-                                                <select class="form-select hidden" id="risk_rating" required>
-                                                    <option value="">Select risk rating</option>
-                                                    <option value="low">Low</option>
-                                                    <option value="medium">Medium</option>
-                                                    <option value="high">High</option>
-                                                    <option value="critical">Critical</option>
-                                                </select>
-                                                
-                                                <div class="risk-rating-container">
-                                                    <div class="risk-item" data-value="low">
-                                                        <div class="rating-display">
-                                                            <span class="risk-color risk-low"></span>
-                                                            <span class="ms-2">Low</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="risk-item" data-value="medium">
-                                                        <div class="rating-display">
-                                                            <span class="risk-color risk-medium"></span>
-                                                            <span class="ms-2">Medium</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="risk-item" data-value="high">
-                                                        <div class="rating-display">
-                                                            <span class="risk-color risk-high"></span>
-                                                            <span class="ms-2">High</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="risk-item" data-value="critical">
-                                                        <div class="rating-display">
-                                                            <span class="risk-color risk-critical"></span>
-                                                            <span class="ms-2">Critical</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label for="status" class="form-label">Status</label>
-                                                <select class="form-select" id="status" required>
-                                                    <option value="">Select status</option>
-                                                    <option value="open">Open</option>
-                                                    <option value="in_progress">In Progress</option>
-                                                    <option value="resolved">Resolved</option>
-                                                    <option value="closed">Closed</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-check form-switch mt-4">
-                                                <input class="form-check-input" type="checkbox" id="control_in_place">
-                                                <label class="form-check-label" for="control_in_place">Control in Place</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Impacted Business Lines -->
-                            <div class="card mb-4">
-                                <div class="card-subheader p-3">
-                                    <h5 class="m-0"><i class="fas fa-building me-2"></i>Impacted Business Lines</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="business-lines-container">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" name="impacted_lines" value="All" id="impacted_lines_all">
-                                            <label class="form-check-label" for="impacted_lines_all">All</label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" name="impacted_lines" value="Retail Banking" id="impacted_lines_retail" checked>
-                                            <label class="form-check-label" for="impacted_lines_retail">Retail Banking</label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" name="impacted_lines" value="Corporate Banking" id="impacted_lines_corporate">
-                                            <label class="form-check-label" for="impacted_lines_corporate">Corporate Banking</label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" name="impacted_lines" value="Wealth Management" id="impacted_lines_wealth" checked>
-                                            <label class="form-check-label" for="impacted_lines_wealth">Wealth Management</label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" name="impacted_lines" value="Investment Banking" id="impacted_lines_investment">
-                                            <label class="form-check-label" for="impacted_lines_investment">Investment Banking</label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" name="impacted_lines" value="Operations" id="impacted_lines_operations">
-                                            <label class="form-check-label" for="impacted_lines_operations">Operations</label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" name="impacted_lines" value="IT" id="impacted_lines_it" checked>
-                                            <label class="form-check-label" for="impacted_lines_it">IT</label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Sección de Taxonomía de Riesgo -->
-                            <div class="card mb-4">
-                                <div class="card-subheader p-3">
-                                    <h5 class="m-0"><i class="fas fa-sitemap me-2"></i>Risk Taxonomy</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-4 taxonomy-section">
-                                            <div class="taxonomy-header">
-                                                <span>Level 1 <span class="text-danger">*</span></span>
-                                                <span class="taxonomy-count">3/6</span>
-                                            </div>
-                                            <div class="taxonomy-container" id="taxonomy-lv1-container">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv1" value="CYBER" id="lv1-cyber" checked>
-                                                    <label class="form-check-label" for="lv1-cyber">Cybersecurity & Technology Risk</label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv1" value="FINANCIAL" id="lv1-financial">
-                                                    <label class="form-check-label" for="lv1-financial">Financial Risk</label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv1" value="OPERATIONAL" id="lv1-operational" checked>
-                                                    <label class="form-check-label" for="lv1-operational">Operational Risk</label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv1" value="REGULATORY" id="lv1-regulatory">
-                                                    <label class="form-check-label" for="lv1-regulatory">Regulatory Compliance Risk</label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv1" value="REPUTATIONAL" id="lv1-reputational" checked>
-                                                    <label class="form-check-label" for="lv1-reputational">Reputational Risk</label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv1" value="STRATEGIC" id="lv1-strategic">
-                                                    <label class="form-check-label" for="lv1-strategic">Strategic Risk</label>
-                                                </div>
-                                            </div>
-                                            <div class="selected-options">
-                                                <div class="selected-item">Cybersecurity & Technology Risk</div>
-                                                <div class="selected-item">Operational Risk</div>
-                                                <div class="selected-item">Reputational Risk</div>
-                                            </div>
-                                            <div id="lv1-error" class="invalid-feedback" style="display: none;">
-                                                Please select at least one Level 1 option
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 taxonomy-section" id="lv2-container">
-                                            <div class="taxonomy-header">
-                                                <span>Level 2 <span class="text-danger">*</span></span>
-                                                <span class="taxonomy-count">2/5</span>
-                                            </div>
-                                            <div class="taxonomy-container" id="lv2-options">
-                                                <div class="taxonomy-group mb-2">
-                                                    <div class="fw-bold small text-muted">Cybersecurity & Technology Risk <span class="option-count">2/2</span></div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv2" value="CYBER_RISK" id="lv2-cyber" checked>
-                                                        <label class="form-check-label" for="lv2-cyber">Cyber Risk</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv2" value="TECH_RISK" id="lv2-tech">
-                                                        <label class="form-check-label" for="lv2-tech">Tech Risk</label>
-                                                    </div>
-                                                </div>
-                                                <div class="taxonomy-group mb-2">
-                                                    <div class="fw-bold small text-muted">Operational Risk <span class="option-count">1/3</span></div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv2" value="THIRD_PARTY" id="lv2-thirdparty" checked>
-                                                        <label class="form-check-label" for="lv2-thirdparty">Third Party Risk Management</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv2" value="MODEL_RISK" id="lv2-model">
-                                                        <label class="form-check-label" for="lv2-model">Model Risk (Fraud, Decisioning, etc.)</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv2" value="RECOVERY_RISK" id="lv2-recovery">
-                                                        <label class="form-check-label" for="lv2-recovery">Recovery Risk</label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="selected-options">
-                                                <div class="selected-item">Cyber Risk</div>
-                                                <div class="selected-item">Third Party Risk Management</div>
-                                            </div>
-                                            <div id="lv2-error" class="invalid-feedback" style="display: none;">
-                                                Please select at least one Level 2 option
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 taxonomy-section" id="lv3-container">
-                                            <div class="taxonomy-header">
-                                                <span>Level 3 <span class="text-danger">*</span></span>
-                                                <span class="taxonomy-count">3/10</span>
-                                            </div>
-                                            <div class="taxonomy-container" id="lv3-options">
-                                                <div class="taxonomy-group mb-2">
-                                                    <div class="fw-bold small text-muted">Cyber Risk <span class="option-count">2/6</span></div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="INEFFECTIVE_CYBER" id="lv3-ineffective" checked>
-                                                        <label class="form-check-label" for="lv3-ineffective">Ineffective Cybersecurity Risk Management</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="CYBER_STRATEGY" id="lv3-strategy">
-                                                        <label class="form-check-label" for="lv3-strategy">Cybersecurity Strategy and Program / Project Failure</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="SECURE_DESIGN" id="lv3-design">
-                                                        <label class="form-check-label" for="lv3-design">Secure Design Deficiencies and Coding Errors</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="UNAUTHORIZED_ACCESS" id="lv3-access">
-                                                        <label class="form-check-label" for="lv3-access">Unauthorized or Misused Access</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="INEFFECTIVE_DATA" id="lv3-data">
-                                                        <label class="form-check-label" for="lv3-data">Ineffective Data Protection</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="VULNERABILITY" id="lv3-vulnerability" checked>
-                                                        <label class="form-check-label" for="lv3-vulnerability">Vulnerability Exploit</label>
-                                                    </div>
-                                                </div>
-                                                <div class="taxonomy-group mb-2">
-                                                    <div class="fw-bold small text-muted">Third Party Risk Management <span class="option-count">1/4</span></div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="VENDOR_ASSESSMENT" id="lv3-vendor" checked>
-                                                        <label class="form-check-label" for="lv3-vendor">Vendor Risk Assessment Failures</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="CONTRACT_MGMT" id="lv3-contract">
-                                                        <label class="form-check-label" for="lv3-contract">Contract Management Issues</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="SUPPLY_CHAIN" id="lv3-supply">
-                                                        <label class="form-check-label" for="lv3-supply">Supply Chain Disruptions</label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="OUTSOURCING" id="lv3-outsourcing">
-                                                        <label class="form-check-label" for="lv3-outsourcing">Outsourcing Risks</label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="selected-options">
-                                                <div class="selected-item">Ineffective Cybersecurity Risk Management</div>
-                                                <div class="selected-item">Vulnerability Exploit</div>
-                                                <div class="selected-item">Vendor Risk Assessment Failures</div>
-                                            </div>
-                                            <div id="lv3-error" class="invalid-feedback" style="display: none;">
-                                                Please select at least one Level 3 option
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Sección de Descripción e Impacto -->
-                            <div class="card mb-4">
-                                <div class="card-subheader p-3">
-                                    <h5 class="m-0"><i class="fas fa-align-left me-2"></i>Description & Impact Assessment</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="mb-3">
-                                        <label for="description" class="form-label">Description</label>
-                                        <textarea class="form-control" id="description" rows="4" required></textarea>
-                                    </div>
-                                    
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <label class="form-label">Potential Impact Trend</label>
-                                            <div class="impact-trend">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="impact_trend" id="escalating" value="escalating">
-                                                    <label class="form-check-label" for="escalating">
-                                                        <i class="fas fa-arrow-up text-danger me-2"></i> Risk is Escalating
-                                                    </label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="impact_trend" id="maintaining" value="maintaining" checked>
-                                                    <label class="form-check-label" for="maintaining">
-                                                        <i class="fas fa-arrow-right text-warning me-2"></i> Risk is Maintaining
-                                                    </label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="impact_trend" id="decreasing" value="decreasing">
-                                                    <label class="form-check-label" for="decreasing">
-                                                        <i class="fas fa-arrow-down text-success me-2"></i> Risk is Decreasing
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="col-md-6">
-                                            <div class="mb-3">
-                                                <label for="impact_notes" class="form-label">Potential Impact Notes</label>
-                                                <textarea class="form-control" id="impact_notes" rows="5" placeholder="Describe the potential impact details..."></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="d-flex justify-content-between mt-4">
-                                <a href="#" class="btn btn-outline-secondary">
-                                    <i class="fas fa-arrow-left me-1"></i> Cancel
-                                </a>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-1"></i> Save Event
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                
-                <!-- Leyenda de Risk Rating -->
-                <div class="card mt-4">
-                    <div class="card-body">
-                        <h6>Risk Rating Legend:</h6>
-                        <div class="d-flex flex-wrap gap-3">
-                            <div class="risk-option">
-                                <span>Low</span>
-                                <span class="risk-color risk-low"></span>
-                            </div>
-                            <div class="risk-option">
-                                <span>Medium</span>
-                                <span class="risk-color risk-medium"></span>
-                            </div>
-                            <div class="risk-option">
-                                <span>High</span>
-                                <span class="risk-color risk-high"></span>
-                            </div>
-                            <div class="risk-option">
-                                <span>Critical</span>
-                                <span class="risk-color risk-critical"></span>
-                            </div>
+                      <div class="mb-3">
+                        <label for="theme" class="form-label">Threat</label>
+                        <select class="form-select" id="theme" name="theme" required>
+                          <option value="">Select a Threat</option>
+                          <!-- Opciones de ejemplo; en Django normalmente usarías {{ form.theme }} -->
+                          <option value="1">Test - Economic</option>
+                          <option value="2">Test - Environment</option>
+                          <option value="3">Test A - Legal</option>
+                          <option value="4">Test1 - Environment</option>
+                        </select>
+                        <div class="invalid-feedback">Please select a threat.</div>
+                      </div>
+
+                      <div class="mb-3" id="name-group">
+                        <label for="name" class="form-label">Event Name</label>
+                        <input
+                          type="text"
+                          class="form-control"
+                          id="name"
+                          name="name"
+                          required
+                          minlength="3"
+                          maxlength="30"
+                          pattern=".*\S.*"
+                          aria-describedby="name-char-count name-error"
+                        >
+                        <div class="form-text text-muted text-end">
+                          <span id="name-char-count">0</span>/30 characters
                         </div>
+                        <div class="invalid-feedback" id="name-error">
+                          El nombre es obligatorio (3–30 caracteres, no solo espacios).
+                        </div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label for="date_identified" class="form-label">Date Identified</label>
+                        <input type="date" class="form-control" id="date_identified" name="date_identified" required>
+                        <div class="form-text text-muted">Date cannot be in the future</div>
+                        <div class="invalid-feedback" id="date-error">Please provide a valid (not future) date.</div>
+                      </div>
                     </div>
+                  </div>
                 </div>
-            </div>
+
+                <div class="col-md-6">
+                  <div class="card h-100">
+                    <div class="card-subheader p-3">
+                      <h5 class="m-0"><i class="fas fa-tags me-2"></i>Classification</h5>
+                    </div>
+                    <div class="card-body">
+                      <div class="mb-3">
+                        <label class="form-label">Risk Rating</label>
+                        <!-- Usa UPPERCASE para que el backend lo acepte -->
+                        <select class="form-select hidden" id="risk_rating" name="risk_rating" required>
+                          <option value="">Select risk rating</option>
+                          <option value="LOW">Low</option>
+                          <option value="MEDIUM">Medium</option>
+                          <option value="HIGH">High</option>
+                          <option value="CRITICAL">Critical</option>
+                        </select>
+
+                        <div id="risk-tiles" class="risk-rating-container" aria-describedby="risk-error">
+                          <div class="risk-item" data-value="LOW" role="button" tabindex="0">
+                            <div class="rating-display"><span class="risk-color risk-low"></span><span class="ms-2">Low</span></div>
+                          </div>
+                          <div class="risk-item" data-value="MEDIUM" role="button" tabindex="0">
+                            <div class="rating-display"><span class="risk-color risk-medium"></span><span class="ms-2">Medium</span></div>
+                          </div>
+                          <div class="risk-item" data-value="HIGH" role="button" tabindex="0">
+                            <div class="rating-display"><span class="risk-color risk-high"></span><span class="ms-2">High</span></div>
+                          </div>
+                          <div class="risk-item" data-value="CRITICAL" role="button" tabindex="0">
+                            <div class="rating-display"><span class="risk-color risk-critical"></span><span class="ms-2">Critical</span></div>
+                          </div>
+                        </div>
+                        <div id="risk-error" class="invalid-feedback d-block" style="display:none">Please select a risk rating.</div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status" required>
+                          <option value="">Select status</option>
+                          <option value="HORIZON SCANNING">Horizon Scanning</option>
+                          <option value="UNDER MONITORING">Under Monitoring</option>
+                          <option value="TRANSITION TO KNOWN RISK">Transition to known risk</option>
+                        </select>
+                        <div class="invalid-feedback">Please select a status.</div>
+                      </div>
+
+                      <div class="form-check form-switch mt-4">
+                        <input class="form-check-input" type="checkbox" id="control_in_place" name="control_in_place">
+                        <label class="form-check-label" for="control_in_place">Control in Place</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Impacted Business Lines -->
+              <div class="card mb-4">
+                <div class="card-subheader p-3">
+                  <h5 class="m-0"><i class="fas fa-building me-2"></i>Impacted Business Lines</h5>
+                </div>
+                <div class="card-body">
+                  <div class="business-lines-container">
+                    <!-- "All" participa en el POST; el backend lo expande -->
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" name="impacted_lines" value="All" id="lob_all">
+                      <label class="form-check-label" for="lob_all">All</label>
+                    </div>
+
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" name="impacted_lines" value="APAC" id="lob_apac">
+                      <label class="form-check-label" for="lob_apac">APAC</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" name="impacted_lines" value="EMEA" id="lob_emea">
+                      <label class="form-check-label" for="lob_emea">EMEA</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" name="impacted_lines" value="Merchant" id="lob_merchant">
+                      <label class="form-check-label" for="lob_merchant">Merchant</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" name="impacted_lines" value="FIG" id="lob_fig">
+                      <label class="form-check-label" for="lob_fig">FIG</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" name="impacted_lines" value="Issuer" id="lob_issuer">
+                      <label class="form-check-label" for="lob_issuer">Issuer</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" name="impacted_lines" value="LATAM" id="lob_latam">
+                      <label class="form-check-label" for="lob_latam">LATAM</label>
+                    </div>
+                    <!-- Exenta: NO la toca "All" -->
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" name="impacted_lines" value="Evaluation in progress" id="lob_eval" data-exempt="true">
+                      <label class="form-check-label" for="lob_eval">Evaluation in progress</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Risk Taxonomy -->
+              <div class="card mb-4">
+                <div class="card-subheader p-3">
+                  <h5 class="m-0"><i class="fas fa-sitemap me-2"></i>Risk Taxonomy</h5>
+                </div>
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-md-4 taxonomy-section">
+                      <div class="taxonomy-header">
+                        <span>Level 1 <span class="text-danger">*</span></span>
+                        <span class="taxonomy-count">3/6</span>
+                      </div>
+                      <div class="taxonomy-container" id="taxonomy-lv1-container" aria-describedby="lv1-error">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv1" value="Cybersecurity & Technology Risk" id="lv1-cyber" checked>
+                          <label class="form-check-label" for="lv1-cyber">Cybersecurity & Technology Risk</label>
+                        </div>
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv1" value="Financial Risk" id="lv1-financial">
+                          <label class="form-check-label" for="lv1-financial">Financial Risk</label>
+                        </div>
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv1" value="Operational Risk" id="lv1-operational" checked>
+                          <label class="form-check-label" for="lv1-operational">Operational Risk</label>
+                        </div>
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv1" value="Regulatory Compliance Risk" id="lv1-regulatory">
+                          <label class="form-check-label" for="lv1-regulatory">Regulatory Compliance Risk</label>
+                        </div>
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv1" value="Reputational Risk" id="lv1-reputational" checked>
+                          <label class="form-check-label" for="lv1-reputational">Reputational Risk</label>
+                        </div>
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv1" value="Strategic Risk" id="lv1-strategic">
+                          <label class="form-check-label" for="lv1-strategic">Strategic Risk</label>
+                        </div>
+                      </div>
+                      <div class="selected-options">
+                        <div class="selected-item">Cybersecurity & Technology Risk</div>
+                        <div class="selected-item">Operational Risk</div>
+                        <div class="selected-item">Reputational Risk</div>
+                      </div>
+                      <div id="lv1-error" class="invalid-feedback" style="display:none">Please select at least one Level 1 option.</div>
+                    </div>
+
+                    <div class="col-md-4 taxonomy-section" id="lv2-container">
+                      <div class="taxonomy-header">
+                        <span>Level 2 <span class="text-danger">*</span></span>
+                        <span class="taxonomy-count">2/5</span>
+                      </div>
+                      <div class="taxonomy-container" id="lv2-options" aria-describedby="lv2-error">
+                        <div class="taxonomy-group mb-2">
+                          <div class="fw-bold small text-muted">Cybersecurity & Technology Risk <span class="option-count">2/2</span></div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv2" value="Cyber Risk" id="lv2-cyber" checked>
+                            <label class="form-check-label" for="lv2-cyber">Cyber Risk</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv2" value="Tech Risk" id="lv2-tech">
+                            <label class="form-check-label" for="lv2-tech">Tech Risk</label>
+                          </div>
+                        </div>
+                        <div class="taxonomy-group mb-2">
+                          <div class="fw-bold small text-muted">Operational Risk <span class="option-count">1/3</span></div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv2" value="Third Party Risk Management" id="lv2-thirdparty" checked>
+                            <label class="form-check-label" for="lv2-thirdparty">Third Party Risk Management</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv2" value="Model Risk (Fraud, Decisioning, etc.)" id="lv2-model">
+                            <label class="form-check-label" for="lv2-model">Model Risk (Fraud, Decisioning, etc.)</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv2" value="Recovery Risk" id="lv2-recovery">
+                            <label class="form-check-label" for="lv2-recovery">Recovery Risk</label>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="selected-options">
+                        <div class="selected-item">Cyber Risk</div>
+                        <div class="selected-item">Third Party Risk Management</div>
+                      </div>
+                      <div id="lv2-error" class="invalid-feedback" style="display:none">Please select at least one Level 2 option.</div>
+                    </div>
+
+                    <div class="col-md-4 taxonomy-section" id="lv3-container">
+                      <div class="taxonomy-header">
+                        <span>Level 3 <span class="text-danger">*</span></span>
+                        <span class="taxonomy-count">3/10</span>
+                      </div>
+                      <div class="taxonomy-container" id="lv3-options" aria-describedby="lv3-error">
+                        <div class="taxonomy-group mb-2">
+                          <div class="fw-bold small text-muted">Cyber Risk <span class="option-count">2/6</span></div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="Ineffective Cybersecurity Risk Management" id="lv3-ineffective" checked>
+                            <label class="form-check-label" for="lv3-ineffective">Ineffective Cybersecurity Risk Management</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="Cybersecurity Strategy and Program / Project Failure" id="lv3-strategy">
+                            <label class="form-check-label" for="lv3-strategy">Cybersecurity Strategy and Program / Project Failure</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="Secure Design Deficiencies and Coding Errors" id="lv3-design">
+                            <label class="form-check-label" for="lv3-design">Secure Design Deficiencies and Coding Errors</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="Unauthorized or Misused Access" id="lv3-access">
+                            <label class="form-check-label" for="lv3-access">Unauthorized or Misused Access</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="Ineffective Data Protection" id="lv3-data">
+                            <label class="form-check-label" for="lv3-data">Ineffective Data Protection</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="Vulnerability Exploit" id="lv3-vulnerability" checked>
+                            <label class="form-check-label" for="lv3-vulnerability">Vulnerability Exploit</label>
+                          </div>
+                        </div>
+                        <div class="taxonomy-group mb-2">
+                          <div class="fw-bold small text-muted">Third Party Risk Management <span class="option-count">1/4</span></div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="Unsuitable Third-Party Selection (New vendor due diligence)" id="lv3-vendor" checked>
+                            <label class="form-check-label" for="lv3-vendor">Vendor Risk Assessment Failures</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="Contract Management Issues" id="lv3-contract">
+                            <label class="form-check-label" for="lv3-contract">Contract Management Issues</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="Supply Chain Disruptions" id="lv3-supply">
+                            <label class="form-check-label" for="lv3-supply">Supply Chain Disruptions</label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="risk_taxonomy_lv3" value="Outsourcing Risks" id="lv3-outsourcing">
+                            <label class="form-check-label" for="lv3-outsourcing">Outsourcing Risks</label>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="selected-options">
+                        <div class="selected-item">Ineffective Cybersecurity Risk Management</div>
+                        <div class="selected-item">Vulnerability Exploit</div>
+                        <div class="selected-item">Vendor Risk Assessment Failures</div>
+                      </div>
+                      <div id="lv3-error" class="invalid-feedback" style="display:none">Please select at least one Level 3 option.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Description & Impact -->
+              <div class="card mb-4">
+                <div class="card-subheader p-3">
+                  <h5 class="m-0"><i class="fas fa-align-left me-2"></i>Description & Impact Assessment</h5>
+                </div>
+                <div class="card-body">
+                  <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" id="description" name="description" rows="4" required></textarea>
+                    <div class="invalid-feedback">Please enter a description.</div>
+                  </div>
+
+                  <div class="row">
+                    <div class="col-md-6">
+                      <label class="form-label">Potential Impact Trend</label>
+                      <div class="impact-trend">
+                        <div class="form-check">
+                          <input class="form-check-input" type="radio" name="impact_trend" id="escalating" value="ESCALATING">
+                          <label class="form-check-label" for="escalating"><i class="fas fa-arrow-up text-danger me-2"></i> Risk is Escalating</label>
+                        </div>
+                        <div class="form-check">
+                          <input class="form-check-input" type="radio" name="impact_trend" id="maintaining" value="MAINTAINING" checked>
+                          <label class="form-check-label" for="maintaining"><i class="fas fa-arrow-right text-warning me-2"></i> Risk is Maintaining</label>
+                        </div>
+                        <div class="form-check">
+                          <input class="form-check-input" type="radio" name="impact_trend" id="decreasing" value="DECREASING">
+                          <label class="form-check-label" for="decreasing"><i class="fas fa-arrow-down text-success me-2"></i> Risk is Decreasing</label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-md-6">
+                      <div class="mb-3">
+                        <label for="impact_notes" class="form-label">Potential Impact Notes</label>
+                        <textarea class="form-control" id="impact_notes" name="impact_notes" rows="5" placeholder="Describe the potential impact details..."></textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between mt-4">
+                <a href="#" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i> Cancel</a>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Save Event</button>
+              </div>
+            </form>
+          </div>
         </div>
+
+        <!-- Legend -->
+        <div class="card mt-4">
+          <div class="card-body">
+            <h6>Risk Rating Legend:</h6>
+            <div class="d-flex flex-wrap gap-3">
+              <div class="risk-option"><span>Low</span><span class="risk-color risk-low"></span></div>
+              <div class="risk-option"><span>Medium</span><span class="risk-color risk-medium"></span></div>
+              <div class="risk-option"><span>High</span><span class="risk-color risk-high"></span></div>
+              <div class="risk-option"><span>Critical</span><span class="risk-color risk-critical"></span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
+  </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Validación del formulario
-        (function () {
-            'use strict'
-            var forms = document.querySelectorAll('.needs-validation')
-            Array.prototype.slice.call(forms)
-                .forEach(function (form) {
-                    form.addEventListener('submit', function (event) {
-                        if (!form.checkValidity()) {
-                            event.preventDefault()
-                            event.stopPropagation()
-                        }
-                        form.classList.add('was-validated')
-                    }, false)
-                })
-        })()
-        
-        // ========== Función para actualizar contador de caracteres ==========
-        function updateCharCount(input) {
-            const charCount = input.value.length;
-            const maxLength = input.getAttribute('maxlength') || 30;
-            const counter = document.getElementById('name-char-count');
-            
-            if (counter) {
-                counter.textContent = charCount;
-                
-                // Cambiar color según se acerca al límite
-                if (charCount > maxLength * 0.8) {
-                    counter.classList.remove('text-muted');
-                    counter.classList.add('text-warning');
-                } else {
-                    counter.classList.remove('text-warning');
-                    counter.classList.add('text-muted');
-                }
-                
-                if (charCount >= maxLength) {
-                    counter.classList.remove('text-warning');
-                    counter.classList.add('text-danger');
-                }
-            }
-        }
-        
-        // Inicializar contador de caracteres
-        const nameInput = document.querySelector('input[name="name"]');
-        if (nameInput) {
-            nameInput.addEventListener('input', function() {
-                updateCharCount(this);
-            });
-            updateCharCount(nameInput);
-        }
-        
-        // Manejo de la selección de risk rating
-        document.addEventListener('DOMContentLoaded', function() {
-            const riskItems = document.querySelectorAll('.risk-item');
-            const riskSelect = document.getElementById('risk_rating');
-            
-            riskItems.forEach(item => {
-                item.addEventListener('click', function() {
-                    // Remover selección previa
-                    riskItems.forEach(i => i.classList.remove('selected'));
-                    
-                    // Marcar como seleccionado
-                    this.classList.add('selected');
-                    
-                    // Actualizar el select oculto
-                    riskSelect.value = this.getAttribute('data-value');
-                });
-            });
-            
-            // Si hay un valor pre-seleccionado, marcar el item correspondiente
-            if (riskSelect.value) {
-                const selectedItem = document.querySelector(`.risk-item[data-value="${riskSelect.value}"]`);
-                if (selectedItem) {
-                    selectedItem.classList.add('selected');
-                }
-            }
-            
-            // Business Lines: "All" - MEJORADO
-            const allCheckbox = document.querySelector('input[name="impacted_lines"][value="All"]');
-            if (allCheckbox) {
-                const otherCheckboxes = document.querySelectorAll('input[name="impacted_lines"]:not([value="All"])');
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-                const syncAllState = () => {
-                    const allChecked = Array.from(otherCheckboxes).every(cb => cb.checked);
-                    if (allChecked) {
-                        allCheckbox.checked = true;
-                        otherCheckboxes.forEach(cb => cb.disabled = true);
-                    } else {
-                        otherCheckboxes.forEach(cb => cb.disabled = false);
-                    }
-                };
+  <script>
+  // ========== Utilidades de UI ==========
+  function updateCharCount(input){
+    const charCount = input.value.length;
+    const maxLength = input.getAttribute('maxlength') || 30;
+    const counter = document.getElementById('name-char-count');
+    if (!counter) return;
+    counter.textContent = charCount;
+    counter.classList.toggle('text-warning', charCount > maxLength * 0.8 && charCount < maxLength);
+    counter.classList.toggle('text-danger', charCount >= maxLength);
+    if (charCount <= maxLength * 0.8) counter.classList.add('text-muted');
+  }
 
-                allCheckbox.addEventListener('change', function () {
-                    otherCheckboxes.forEach(cb => {
-                        cb.checked = allCheckbox.checked;
-                        cb.disabled = allCheckbox.checked;
-                    });
-                });
+  function scrollToError(target, fallbackFocusable){
+    if (!target) return;
+    target.classList.add('shake');
+    target.scrollIntoView({behavior:'smooth', block:'center', inline:'nearest'});
+    setTimeout(()=>target.classList.remove('shake'), 500);
+    const focusEl = (
+      target.matches('input,select,textarea,button,[tabindex]') ? target :
+      target.querySelector('input,select,textarea,button,[tabindex]') || fallbackFocusable || null
+    );
+    try { focusEl && focusEl.focus({preventScroll:true}); } catch(e){}
+  }
 
-                otherCheckboxes.forEach(cb => {
-                    cb.addEventListener('change', function () {
-                        if (this.checked) {
-                            allCheckbox.checked = false;
-                        }
-                        syncAllState();
-                    });
-                });
+  // ========== Validación de nombre (3–30, no solo espacios) ==========
+  function validateName(){
+    const input = document.getElementById('name');
+    const v = (input.value || '').trim();
+    if (!v || v.length < 3){ input.setCustomValidity('invalid'); }
+    else { input.setCustomValidity(''); }
+    return input.checkValidity();
+  }
 
-                if (allCheckbox.checked) {
-                    otherCheckboxes.forEach(cb => { cb.checked = true; cb.disabled = true; });
-                } else {
-                    syncAllState();
-                }
-            }
-            
-            // Función para mejorar el scroll y mostrar opciones seleccionadas
-            function enhanceTaxonomyScroll() {
-                const taxonomySections = document.querySelectorAll('.taxonomy-section');
-                
-                taxonomySections.forEach(section => {
-                    const optionsContainer = section.querySelector('.taxonomy-container');
-                    const checkboxes = optionsContainer.querySelectorAll('input[type="checkbox"]');
-                    
-                    // Añadir evento a cada checkbox
-                    checkboxes.forEach(checkbox => {
-                        checkbox.addEventListener('change', function() {
-                            updateSelectedOptions(section);
-                            updateCounts(section);
-                            
-                            // Scroll a la opción seleccionada
-                            if (this.checked) {
-                                setTimeout(() => {
-                                    this.closest('.form-check').scrollIntoView({ 
-                                        behavior: 'smooth', 
-                                        block: 'center',
-                                        inline: 'nearest'
-                                    });
-                                }, 100);
-                            }
-                        });
-                    });
-                    
-                    // Inicializar contadores y opciones seleccionadas
-                    updateCounts(section);
-                    updateSelectedOptions(section);
-                });
-            }
-            
-            // Actualizar contadores de selección
-            function updateCounts(section) {
-                const optionsContainer = section.querySelector('.taxonomy-container');
-                const checkboxes = optionsContainer.querySelectorAll('input[type="checkbox"]');
-                const checkedBoxes = optionsContainer.querySelectorAll('input[type="checkbox"]:checked');
-                const countElement = section.querySelector('.taxonomy-count');
-                
-                if (countElement) {
-                    countElement.textContent = `${checkedBoxes.length}/${checkboxes.length}`;
-                }
-                
-                // Actualizar contadores de grupos
-                const groups = optionsContainer.querySelectorAll('.taxonomy-group');
-                groups.forEach(group => {
-                    const groupCheckboxes = group.querySelectorAll('input[type="checkbox"]');
-                    const groupChecked = group.querySelectorAll('input[type="checkbox"]:checked');
-                    const groupCount = group.querySelector('.option-count');
-                    
-                    if (groupCount) {
-                        groupCount.textContent = `${groupChecked.length}/${groupCheckboxes.length}`;
-                    }
-                });
-            }
-            
-            // Actualizar visualización de opciones seleccionadas
-            function updateSelectedOptions(section) {
-                const optionsContainer = section.querySelector('.taxonomy-container');
-                const selectedContainer = section.querySelector('.selected-options');
-                const checkboxes = optionsContainer.querySelectorAll('input[type="checkbox"]:checked');
-                
-                // Limpiar contenedor
-                selectedContainer.innerHTML = '';
-                
-                // Añadir opciones seleccionadas
-                checkboxes.forEach(checkbox => {
-                    const label = checkbox.closest('.form-check').querySelector('label');
-                    const selectedItem = document.createElement('div');
-                    selectedItem.className = 'selected-item';
-                    selectedItem.textContent = label.textContent;
-                    selectedContainer.appendChild(selectedItem);
-                });
-                
-                // Mostrar u ocultar contenedor según haya selecciones
-                if (checkboxes.length > 0) {
-                    selectedContainer.style.display = 'block';
-                } else {
-                    selectedContainer.style.display = 'none';
-                }
-            }
-            
-            // Inicializar la mejora de scroll
-            enhanceTaxonomyScroll();
-            
-            // Simular la carga de datos para demostración
-            setTimeout(() => {
-                // Hacer scroll a las secciones con opciones seleccionadas
-                const checkedOptions = document.querySelectorAll('input[type="checkbox"]:checked');
-                
-                checkedOptions.forEach(option => {
-                    const parentSection = option.closest('.taxonomy-section');
-                    if (parentSection) {
-                        setTimeout(() => {
-                            option.closest('.form-check').scrollIntoView({ 
-                                behavior: 'smooth', 
-                                block: 'center',
-                                inline: 'nearest'
-                            });
-                        }, 300);
-                    }
-                });
-            }, 500);
+  // ========== Business Lines: "All" excluye "Evaluation in progress" ==========
+  function setupLOBLogic(){
+  const allCb = document.querySelector('input[name="impacted_lines"][value="All"]');
+  if (!allCb) return;
+
+  const cbs = Array.from(document.querySelectorAll('input[name="impacted_lines"]'));
+  const EXEMPT_VALUES = ['Evaluation in progress'];
+  const exempt = cbs.filter(cb => EXEMPT_VALUES.includes(cb.value));
+  const targets = cbs.filter(cb => cb.value !== 'All' && !EXEMPT_VALUES.includes(cb.value));
+
+  function applyAllState(checked){
+    // Objetivo: cuando All está ON, marcar/deshabilitar targets y
+    // forzar Evaluation in progress a OFF + deshabilitada
+    targets.forEach(cb => { cb.checked = checked; cb.disabled = checked; });
+    exempt.forEach(cb => {
+      if (checked){
+        cb.checked = false;
+        cb.disabled = true;
+      } else {
+        cb.disabled = false;
+      }
+    });
+  }
+
+  function syncAllState(){
+    const allChecked = targets.length>0 && targets.every(cb => cb.checked);
+    allCb.checked = allChecked;
+
+    // Si todas las targets quedaron ON manualmente, reflejar estado de All
+    targets.forEach(cb => cb.disabled = allChecked);
+
+    // Con All "efectivo", Evaluation in progress debe quedar OFF + deshabilitada
+    exempt.forEach(cb => {
+      if (allChecked){
+        cb.checked = false;
+        cb.disabled = true;
+      } else {
+        cb.disabled = false;
+      }
+    });
+  }
+
+  allCb.addEventListener('change', ()=> applyAllState(allCb.checked));
+  targets.forEach(cb => cb.addEventListener('change', syncAllState));
+
+  // “Guardrail” por si intentan marcar la exenta con All activo (o vía devtools)
+  exempt.forEach(cb => cb.addEventListener('change', ()=>{
+    if (allCb.checked){
+      cb.checked = false;
+    }
+  }));
+
+  // Estado inicial al cargar
+  if (allCb.checked) applyAllState(true); else syncAllState();
+}
+  // ========== Taxonomy helpers ==========
+  function enhanceTaxonomyScroll(){
+    const sections = document.querySelectorAll('.taxonomy-section');
+    sections.forEach(section=>{
+      const box = section.querySelector('.taxonomy-container');
+      const checks = box.querySelectorAll('input[type="checkbox"]');
+      checks.forEach(chk=>{
+        chk.addEventListener('change', function(){
+          updateSelectedOptions(section);
+          updateCounts(section);
+          if (this.checked){
+            setTimeout(()=> this.closest('.form-check').scrollIntoView({behavior:'smooth',block:'center'}), 80);
+          }
         });
-    </script>
+      });
+      updateCounts(section);
+      updateSelectedOptions(section);
+    });
+  }
+  function updateCounts(section){
+    const box = section.querySelector('.taxonomy-container');
+    const checks = box.querySelectorAll('input[type="checkbox"]');
+    const checked = box.querySelectorAll('input[type="checkbox"]:checked');
+    const countEl = section.querySelector('.taxonomy-count');
+    if (countEl) countEl.textContent = `${checked.length}/${checks.length}`;
+    section.querySelectorAll('.taxonomy-group').forEach(g=>{
+      const cAll = g.querySelectorAll('input[type="checkbox"]');
+      const cSel = g.querySelectorAll('input[type="checkbox"]:checked');
+      const gc = g.querySelector('.option-count');
+      if (gc) gc.textContent = `${cSel.length}/${cAll.length}`;
+    });
+  }
+  function updateSelectedOptions(section){
+    const box = section.querySelector('.taxonomy-container');
+    const chips = section.querySelector('.selected-options');
+    const checks = box.querySelectorAll('input[type="checkbox"]:checked');
+    chips.innerHTML='';
+    checks.forEach(chk=>{
+      const label = chk.closest('.form-check').querySelector('label');
+      const div = document.createElement('div');
+      div.className='selected-item';
+      div.textContent = label.textContent;
+      chips.appendChild(div);
+    });
+    chips.style.display = checks.length>0 ? 'block':'none';
+  }
+
+  // ========== Risk tiles a11y + binding ==========
+  function setupRiskTiles(){
+    const tiles = document.querySelectorAll('.risk-item');
+    const select = document.getElementById('risk_rating');
+    const error = document.getElementById('risk-error');
+    const tilesBox = document.getElementById('risk-tiles');
+
+    function choose(val){
+      tiles.forEach(t=>t.classList.remove('selected'));
+      const tile = document.querySelector(`.risk-item[data-value="${val}"]`);
+      if (tile){ tile.classList.add('selected'); }
+      select.value = val;
+      select.setCustomValidity('');
+      error.style.display = 'none';
+      tilesBox.classList.remove('risk-tiles-invalid');
+      tilesBox.setAttribute('aria-invalid','false');
+    }
+
+    tiles.forEach(t=>{
+      t.addEventListener('click',()=> choose(t.getAttribute('data-value')));
+      t.addEventListener('keydown',ev=>{
+        if (ev.key==='Enter' || ev.key===' '){ ev.preventDefault(); t.click(); }
+      });
+    });
+
+    if (select.value){
+      const initial = document.querySelector(`.risk-item[data-value="${select.value}"]`);
+      initial && initial.classList.add('selected');
+    }
+  }
+
+  // ========== Validaciones de negocio ==========
+  function validateDateNotFuture(){
+    const input = document.getElementById('date_identified');
+    if (!input) return true;
+    const today = new Date().toISOString().split('T')[0];
+    input.setAttribute('max', today);
+    if (input.value && input.value > today){
+      input.setCustomValidity('Date cannot be in the future');
+    } else {
+      input.setCustomValidity('');
+    }
+    return input.checkValidity();
+  }
+
+  function validateTaxonomy(){
+    let ok = true;
+    [
+      {boxId:'taxonomy-lv1-container', errId:'lv1-error'},
+      {boxId:'lv2-options',            errId:'lv2-error'},
+      {boxId:'lv3-options',            errId:'lv3-error'}
+    ].forEach(({boxId,errId})=>{
+      const box = document.getElementById(boxId);
+      const err = document.getElementById(errId);
+      const section = err.closest('.taxonomy-section');
+      const anyChecked = !!box.querySelector('input[type="checkbox"]:checked');
+      if (!anyChecked){
+        ok = false;
+        err.style.display='block';
+        section.classList.add('is-invalid');
+        section.setAttribute('aria-invalid','true');
+      } else {
+        err.style.display='none';
+        section.classList.remove('is-invalid');
+        section.removeAttribute('aria-invalid');
+      }
+    });
+    return ok;
+  }
+
+  function validateRisk(){
+    const select = document.getElementById('risk_rating');
+    const error = document.getElementById('risk-error');
+    const tilesBox = document.getElementById('risk-tiles');
+    const valid = !!select.value;
+    if (!valid){
+      select.setCustomValidity('Please select a risk rating');
+      error.style.display='block';
+      tilesBox.classList.add('risk-tiles-invalid');
+      tilesBox.setAttribute('aria-invalid','true');
+    } else {
+      select.setCustomValidity('');
+      error.style.display='none';
+      tilesBox.classList.remove('risk-tiles-invalid');
+      tilesBox.setAttribute('aria-invalid','false');
+    }
+    return valid;
+  }
+
+  function firstInvalidTarget(){
+    const nativeInvalid = document.querySelector('input:invalid, select:invalid, textarea:invalid');
+    if (nativeInvalid) return nativeInvalid;
+    if (!document.getElementById('risk_rating').value) return document.getElementById('risk-tiles');
+    const badTax = document.querySelector('.taxonomy-section.is-invalid');
+    if (badTax) return badTax;
+    return null;
+  }
+
+  // ========== Bootstrapping ==========
+  (function(){
+    'use strict';
+
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function(form){
+      form.addEventListener('submit', function(e){
+        const nameOk = validateName();
+        const dateOk = validateDateNotFuture();
+        const taxOk  = validateTaxonomy();
+        const riskOk = validateRisk();
+
+        if (!form.checkValidity() || !nameOk || !dateOk || !taxOk || !riskOk){
+          e.preventDefault();
+          e.stopPropagation();
+          form.classList.add('was-validated');
+
+          const target = firstInvalidTarget();
+          if (target){
+            const fallback = target.querySelector('input[type="checkbox"]');
+            scrollToError(target, fallback);
+          }
+          return false;
+        }
+      }, false);
+    });
+
+    // Contador de nombre
+    const nameInput = document.getElementById('name');
+    if (nameInput){
+      nameInput.addEventListener('input', function(){
+        updateCharCount(this);
+        validateName();
+      });
+      updateCharCount(nameInput);
+    }
+
+    // Fecha: set max hoy y validar on input
+    const dateInput = document.getElementById('date_identified');
+    if (dateInput){
+      const today = new Date().toISOString().split('T')[0];
+      dateInput.setAttribute('max', today);
+      dateInput.addEventListener('input', validateDateNotFuture);
+    }
+
+    setupLOBLogic();
+    enhanceTaxonomyScroll();
+    setupRiskTiles();
+
+    // Scroll "bonito" a checks activos
+    setTimeout(()=>{
+      document.querySelectorAll('input[type="checkbox"]:checked').forEach(opt=>{
+        const section = opt.closest('.taxonomy-section');
+        if (section){
+          setTimeout(()=>{ opt.closest('.form-check').scrollIntoView({behavior:'smooth',block:'center'}); }, 250);
+        }
+      });
+    }, 400);
+  })();
+  </script>
 </body>
 </html>

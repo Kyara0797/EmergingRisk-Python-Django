@@ -1,47 +1,107 @@
 {% extends "base.html" %}
+{% load widget_tweaks %}
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h4>Register</h4>
+  <div class="col-md-7 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+          <i class="fas fa-user-plus me-2"></i>
+          Create User
+          <span class="badge bg-light text-primary ms-2">Admin only</span>
+        </h5>
+        <a href="{% url 'dashboard' %}" class="btn btn-light btn-sm">
+          <i class="fas fa-gauge me-1"></i> Dashboard
+        </a>
+      </div>
+
+      <div class="card-body">
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">
+            {% for err in form.non_field_errors %}
+              <div><i class="fas fa-exclamation-circle me-1"></i>{{ err }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <!-- Username -->
+          <div class="mb-3">
+            <label for="{{ form.username.id_for_label }}" class="form-label">Username</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-user"></i></span>
+              {{ form.username|add_class:"form-control"|attr:"placeholder:Choose a username"|attr:"autocomplete:username" }}
             </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        {{ form.username.label_tag }}
-                        {{ form.username }}
-                        {% if form.username.errors %}
-                        <div class="text-danger">{{ form.username.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="mb-3">
-                        {{ form.email.label_tag }}
-                        {{ form.email }}
-                        {% if form.email.errors %}
-                        <div class="text-danger">{{ form.email.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="mb-3">
-                        {{ form.password1.label_tag }}
-                        {{ form.password1 }}
-                        {% if form.password1.errors %}
-                        <div class="text-danger">{{ form.password1.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="mb-3">
-                        {{ form.password2.label_tag }}
-                        {{ form.password2 }}
-                        {% if form.password2.errors %}
-                        <div class="text-danger">{{ form.password2.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <button type="submit" class="btn btn-primary">Register</button>
-                </form>
+            {% if form.username.errors %}
+              <div class="invalid-feedback d-block">{{ form.username.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Email -->
+          <div class="mb-3">
+            <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+              {{ form.email|add_class:"form-control"|attr:"placeholder:you@example.com"|attr:"autocomplete:email" }}
             </div>
-        </div>
+            <div class="form-text">Use a unique email; users podrán iniciar sesión con email o username.</div>
+            {% if form.email.errors %}
+              <div class="invalid-feedback d-block">{{ form.email.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Password -->
+          <div class="mb-3">
+            <label for="{{ form.password1.id_for_label }}" class="form-label">Password</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-lock"></i></span>
+              {{ form.password1|add_class:"form-control"|attr:"placeholder:Create a password"|attr:"autocomplete:new-password" }}
+            </div>
+            {% if form.password1.help_text %}
+              <div class="form-text">{{ form.password1.help_text|safe }}</div>
+            {% endif %}
+            {% if form.password1.errors %}
+              <div class="invalid-feedback d-block">{{ form.password1.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Confirm -->
+          <div class="mb-3">
+            <label for="{{ form.password2.id_for_label }}" class="form-label">Confirm password</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-lock"></i></span>
+              {{ form.password2|add_class:"form-control"|attr:"placeholder:Repeat the password"|attr:"autocomplete:new-password" }}
+            </div>
+            {% if form.password2.errors %}
+              <div class="invalid-feedback d-block">{{ form.password2.errors|join:", " }}</div>
+            {% endif %}
+          </div>
+
+          <div class="d-flex gap-2">
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+              <i class="fas fa-arrow-left me-1"></i> Cancel
+            </a>
+            <button type="submit" class="btn btn-primary ms-auto">
+              <i class="fas fa-user-check me-1"></i> Create user
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card-footer bg-light">
+        <small class="text-muted">
+          Only superusers can access this page. New users are created as regular users (no staff/superuser).
+        </small>
+      </div>
     </div>
+  </div>
 </div>
+
+<style>
+  .card { border: 0; border-radius: .75rem; }
+  .card-header { border-top-left-radius: .75rem; border-top-right-radius: .75rem; }
+</style>
 {% endblock %}

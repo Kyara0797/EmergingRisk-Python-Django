@@ -6,15 +6,31 @@
     <!-- Header -->
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
       <h4 class="mb-0">{{ theme.name }}</h4>
-      <div class="d-flex gap-2 header-actions">
-        <a href="{% url 'edit_theme' pk=theme.pk %}" class="btn btn-warning btn-sm fw-semibold">
-          <i class="fas fa-edit me-1"></i> Edit Threat
-        </a>
-        <!-- Contraste alto sobre bg-primary -->
-        <a href="{% url 'add_event' theme_id=theme.id %}" class="btn btn-light btn-sm text-primary fw-semibold shadow-sm">
-          <i class="fas fa-plus me-1"></i> Event
-        </a>
-      </div>
+
+      {% if request.user.is_authenticated %}
+        {% if request.user.is_staff or request.user.is_superuser %}
+        <div class="d-flex gap-2 header-actions">
+          <!-- Edit -->
+          <a href="{% url 'edit_theme' pk=theme.pk %}" class="btn btn-warning btn-sm fw-semibold">
+            <i class="fas fa-edit me-1"></i> Edit Threat
+          </a>
+          <!-- Add Event -->
+          <a href="{% url 'add_event' theme_id=theme.id %}" class="btn btn-light btn-sm text-primary fw-semibold shadow-sm">
+            <i class="fas fa-plus me-1"></i> Event
+          </a>
+          <!-- Archive / Restore -->
+          <form method="post" action="{% url 'toggle_theme_active' pk=theme.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit"
+                    class="btn btn-outline-{{ theme.is_active|yesno:'danger,success' }} btn-sm fw-semibold"
+                    onclick="return confirm('{{ theme.is_active|yesno:"Archive this threat?,Restore this threat?" }}');">
+              <i class="fas fa-{{ theme.is_active|yesno:'archive,rotate-left' }} me-1"></i>
+              {{ theme.is_active|yesno:'Archive,Restore' }}
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      {% endif %}
     </div>
 
     <div class="card-body">
@@ -39,12 +55,6 @@
                 <strong class="text-muted">Risk Rating</strong>
               </div>
               <span class="badge bg-{{ theme.get_risk_color }} p-2">
-                <i class="fas
-                  {% if theme.risk_rating == 'low' %}fa-arrow-down
-                  {% elif theme.risk_rating == 'medium' %}fa-equals
-                  {% elif theme.risk_rating == 'high' %}fa-arrow-up
-                  {% elif theme.risk_rating == 'critical' %}fa-skull
-                  {% endif %} me-1"></i>
                 {{ theme.get_risk_rating_display }}
               </span>
             </div>
@@ -87,7 +97,7 @@
           </small>
         </div>
 
-        {% if theme.events.all %}
+        {% if theme.events.count %}
           <div class="table-responsive">
             <table class="table table-hover align-middle" id="themeEventsTable">
               <thead>
@@ -95,7 +105,11 @@
                   <th>Event Name</th>
                   <th>Date Identified</th>
                   <th>Risk Level</th>
-                  <th class="text-end">Actions</th>
+                  {% if request.user.is_authenticated %}
+                    {% if request.user.is_staff or request.user.is_superuser %}
+                      <th class="text-end no-sort">Actions</th>
+                    {% endif %}
+                  {% endif %}
                 </tr>
               </thead>
               <tbody>
@@ -110,19 +124,33 @@
                       {{ event.get_risk_rating_display }}
                     </span>
                   </td>
-                  <td class="text-end">
-                    <div class="btn-group btn-group-sm" role="group" aria-label="Actions">
-                      <a href="{% url 'view_event' event_id=event.pk %}" class="btn btn-outline-primary" title="View">
-                        <i class="fas fa-eye"></i>
-                      </a>
-                      <a href="{% url 'edit_event' pk=event.pk %}" class="btn btn-outline-warning" title="Edit">
-                        <i class="fas fa-edit"></i>
-                      </a>
-                      <a href="{% url 'add_source' event_pk=event.pk %}" class="btn btn-primary" title="Add Source">
-                        <i class="fas fa-plus"></i>
-                      </a>
-                    </div>
-                  </td>
+                  {% if request.user.is_authenticated %}
+                    {% if request.user.is_staff or request.user.is_superuser %}
+                    <td class="text-end">
+                      <div class="btn-group btn-group-sm" role="group" aria-label="Actions">
+                        <!-- View -->
+                        <a href="{% url 'view_event' event_id=event.pk %}" class="btn btn-outline-primary" title="View">
+                          <i class="fas fa-eye"></i>
+                        </a>
+                        <!-- Edit -->
+                        <a href="{% url 'edit_event' pk=event.pk %}" class="btn btn-outline-warning" title="Edit">
+                          <i class="fas fa-edit"></i>
+                        </a>
+                        <!-- Archive / Restore -->
+                        <form method="post" action="{% url 'toggle_event_active' pk=event.pk %}" class="d-inline">
+                          {% csrf_token %}
+                          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                          <button type="submit"
+                                  class="btn btn-outline-{{ event.is_active|yesno:'danger,success' }}"
+                                  title="{{ event.is_active|yesno:'Archive,Restore' }}"
+                                  onclick="return confirm('{{ event.is_active|yesno:"Archive this event?,Restore this event?" }}');">
+                            <i class="fas fa-{{ event.is_active|yesno:'archive,rotate-left' }}"></i>
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                    {% endif %}
+                  {% endif %}
                 </tr>
                 {% endfor %}
               </tbody>
@@ -132,7 +160,11 @@
           <div class="alert alert-info">
             <i class="fas fa-info-circle me-1"></i>
             No events have been added to this Threat yet.
-            <a href="{% url 'add_event' theme_id=theme.pk %}" class="alert-link">Add the first event</a>
+            {% if request.user.is_authenticated %}
+              {% if request.user.is_staff or request.user.is_superuser %}
+                <a href="{% url 'add_event' theme_id=theme.pk %}" class="alert-link">Add the first event</a>
+              {% endif %}
+            {% endif %}
           </div>
         {% endif %}
       </div>
@@ -141,27 +173,41 @@
 </div>
 
 <style>
-  .detail-card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border: 1px solid rgba(0,0,0,0.05);
-  }
-  .detail-card:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important; }
-  .theme-details-container { background: linear-gradient(to right, #f8f9fa, #f0f4f8) !important; }
-
-  /* Botones en el header azul */
-  .header-actions .btn { border-radius: .55rem; }
-  .header-actions .btn-light { background:#fff; border:0; }
-  .header-actions .btn-light:hover { background:#f8f9fa; }
+  .detail-card{transition:transform .2s ease,box-shadow .2s ease;border:1px solid rgba(0,0,0,0.05)}
+  .detail-card:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(0,0,0,0.1)!important}
+  .theme-details-container{background:linear-gradient(to right,#f8f9fa,#f0f4f8)!important}
+  .header-actions .btn{border-radius:.55rem}
+  .header-actions .btn-light{background:#fff;border:0}
+  .header-actions .btn-light:hover{background:#f8f9fa}
+  /* Ocultar flechas en columnas no ordenables */
+  #themeEventsTable th.no-sort.sorting:before,
+  #themeEventsTable th.no-sort.sorting:after,
+  #themeEventsTable th.no-sort.sorting_asc:before,
+  #themeEventsTable th.no-sort.sorting_asc:after,
+  #themeEventsTable th.no-sort.sorting_desc:before,
+  #themeEventsTable th.no-sort.sorting_desc:after,
+  #themeEventsTable th.no-sort.sorting_disabled:before,
+  #themeEventsTable th.no-sort.sorting_disabled:after{display:none!important}
+  #themeEventsTable th.no-sort{pointer-events:none}
 </style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // Mantiene tu comportamiento actual: ordenar por fecha (col 1) descendente.
+  // Booleano para DataTables
+  const SHOW_EVENT_ACTIONS = {% if request.user.is_authenticated %}{% if request.user.is_staff or request.user.is_superuser %}true{% else %}false{% endif %}{% else %}false{% endif %};
+
   if (window.jQuery && $.fn.DataTable) {
     $(function () {
+      const columnDefs = [];
+      if (SHOW_EVENT_ACTIONS) {
+        columnDefs.push({ targets: -1, orderable: false, searchable: false, className: 'text-end no-sort' });
+      }
       $('#themeEventsTable').DataTable({
-        order: [[1, 'desc']],
+        order: [[1,'desc']],
+        pageLength: 10,
+        lengthMenu: [[5,10,20,-1],[5,10,20,'All']],
+        columnDefs: columnDefs,
         language: {
           emptyTable: 'No events available',
           info: 'Showing _START_ to _END_ of _TOTAL_ events',

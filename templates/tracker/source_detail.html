@@ -3,42 +3,62 @@
 
 {% block content %}
 {% with src=object %}
-<div class="container mt-4">
+<div class="container mt-4" id="source-detail">
   <div class="card">
+
     <!-- Header -->
     <div class="card-header bg-primary text-white">
       <div class="d-flex justify-content-between align-items-center">
         <h4 class="mb-0">
-          <i class="fas fa-file-alt me-2"></i>Source: {{ src.name }}
+          <i class="fas fa-file-alt me-2"></i>
+          Source: {{ src.name }}
           <small class="ms-2 fw-normal">for
-            <a class="text-white text-decoration-underline" href="{% url 'view_event' event_id=src.event.id %}">
+            <a class="text-white text-decoration-underline"
+               href="{% url 'view_event' event_id=src.event.id %}#sources">
               {{ src.event.name }}
             </a>
           </small>
         </h4>
-        <div class="d-flex gap-2">
-          <a href="{% url 'edit_source' pk=src.id %}" class="btn btn-warning btn-sm">
-            <i class="fas fa-edit me-1"></i> Edit
-          </a>
-          {% if src.is_active %}
-            <a href="{% url 'toggle_source_active' pk=src.id %}" class="btn btn-outline-light btn-sm"
-               onclick="return confirm('Archive this source bundle? You can restore it later.');">
-              <i class="fas fa-archive me-1"></i> Archive
-            </a>
-          {% else %}
-            <a href="{% url 'toggle_source_active' pk=src.id %}" class="btn btn-outline-light btn-sm"
-               onclick="return confirm('Restore this source bundle?');">
-              <i class="fas fa-rotate-left me-1"></i> Restore
-            </a>
+
+        <div class="d-flex gap-2 align-items-center">
+          {# Acciones solo para admins #}
+          {% if user.is_authenticated %}
+            {% if user.is_staff or user.is_superuser %}
+              <a href="{% url 'edit_source' pk=src.id %}" class="btn btn-warning btn-sm" title="Edit">
+                <i class="fas fa-edit me-1"></i> Edit
+              </a>
+
+              {# --- Archive / Restore como POST (evita 'Invalid method') --- #}
+              <form action="{% url 'toggle_source_active' pk=src.id %}" method="post" class="d-inline">
+                {% csrf_token %}
+                {% if src.is_active %}
+                  <button type="submit" class="btn btn-outline-light btn-sm"
+                          title="Archive"
+                          onclick="return confirm('Archive this source bundle? You can show it again with \"Show archived\".');">
+                    <i class="fas fa-archive me-1"></i> Archive
+                  </button>
+                {% else %}
+                  <button type="submit" class="btn btn-outline-light btn-sm"
+                          title="Restore"
+                          onclick="return confirm('Restore this source bundle?');">
+                    <i class="fas fa-rotate-left me-1"></i> Restore
+                  </button>
+                {% endif %}
+              </form>
+            {% endif %}
           {% endif %}
-          <a href="{% url 'view_event' event_id=src.event.id %}" class="btn btn-light btn-sm">
+
+          {# Visible para todos #}
+          <a href="{% url 'view_event' event_id=src.event.id %}#sources" class="btn btn-light btn-sm">
             <i class="fas fa-arrow-left me-1"></i> Back to Event
           </a>
         </div>
       </div>
     </div>
+    <!-- /Header -->
 
     <div class="card-body">
+
       <!-- ===== Overview ===== -->
       <div class="row mb-4">
         <div class="col-md-3 mb-3">
@@ -48,7 +68,7 @@
               <strong class="text-muted">Event</strong>
             </div>
             <p class="mb-0 fw-bold">
-              <a href="{% url 'view_event' event_id=src.event.id %}">{{ src.event.name }}</a>
+              <a href="{% url 'view_event' event_id=src.event.id %}#sources">{{ src.event.name }}</a>
             </p>
           </div>
         </div>
@@ -70,15 +90,18 @@
               <strong class="text-muted">Type</strong>
             </div>
             <p class="mb-0">
-              {% if src.source_type == 'MIXED' %}
-                <span class="badge bg-dark">Mixed</span>
-              {% elif src.source_type == 'FILE' %}
-                <span class="badge bg-secondary">File</span>
-              {% elif src.source_type == 'LINK' %}
-                <span class="badge bg-info">Link</span>
-              {% else %}
-                <span class="badge bg-light text-dark">-</span>
-              {% endif %}
+              {# Tipo derivado del bundle real (links + files) #}
+              {% with lc=bundle_links|length fc=bundle_files|length %}
+                {% if lc and fc %}
+                  <span class="badge bg-dark">Mixed</span>
+                {% elif fc %}
+                  <span class="badge bg-secondary">File</span>
+                {% elif lc %}
+                  <span class="badge bg-info">Link</span>
+                {% else %}
+                  <span class="badge bg-light text-dark">-</span>
+                {% endif %}
+              {% endwith %}
             </p>
           </div>
         </div>
@@ -164,7 +187,6 @@
         </div>
       </div>
 
-
       {% if file_history %}
       <div class="card mb-4 shadow-sm">
         <div class="card-header bg-light">
@@ -192,8 +214,6 @@
         </div>
       </div>
       {% endif %}
-
-
 
       <!-- ===== Summary ===== -->
       <div class="card mb-4 shadow-sm">
@@ -230,13 +250,9 @@
               {% for s in bundle_items %}
                 <tr class="{% if not s.is_active %}table-light text-muted{% endif %}">
                   <td class="text-nowrap">
-                    {% if s.source_type == 'MIXED' %}
-                      <span class="badge bg-dark">Mixed</span>
-                    {% elif s.source_type == 'FILE' %}
-                      <span class="badge bg-secondary">File</span>
-                    {% else %}
-                      <span class="badge bg-info">Link</span>
-                    {% endif %}
+                    {% if s.file_upload %}<span class="badge bg-secondary">File</span>
+                    {% elif s.link_or_file %}<span class="badge bg-info">Link</span>
+                    {% else %}<span class="badge bg-light text-dark">-</span>{% endif %}
                   </td>
                   <td style="max-width:480px;">
                     {% if s.file_upload %}
@@ -245,9 +261,11 @@
                       </a>
                     {% elif s.link_or_file %}
                       {% if s.link_or_file|slice:":7" == "mailto:" %}
-                        <i class="fas fa-envelope me-1"></i> <a href="{{ s.link_or_file }}">{{ s.link_or_file }}</a>
+                        <i class="fas fa-envelope me-1"></i>
+                        <a href="{{ s.link_or_file }}">{{ s.link_or_file }}</a>
                       {% else %}
-                        <i class="fas fa-external-link-alt me-1"></i> <a href="{{ s.link_or_file }}" target="_blank" rel="noopener">{{ s.link_or_file }}</a>
+                        <i class="fas fa-external-link-alt me-1"></i>
+                        <a href="{{ s.link_or_file }}" target="_blank" rel="noopener">{{ s.link_or_file }}</a>
                       {% endif %}
                     {% else %}
                       <em class="text-muted">—</em>
@@ -266,12 +284,14 @@
               </tbody>
             </table>
           </div>
-          <div class="text-muted small">* Bundle = leader + sibling items created from “Add/Edit Source.”</div>
+          <div class="text-muted small">
+            * Bundle = leader + sibling items created from “Add/Edit Source”.
+          </div>
         </div>
       </div>
       {% endif %}
 
-      <!-- ===== Impact (Potential + Notes side-by-side) ===== -->
+      <!-- ===== Impact (Potential + Notes) ===== -->
       <div class="row mb-4">
         <div class="col-md-6">
           <div class="card h-100 shadow-sm">
@@ -321,20 +341,22 @@
         </div>
       </div>
       {% endif %}
-    </div>
+
+    </div> <!-- /card-body -->
   </div>
 </div>
 
 <style>
-  .scroll-container { overflow-y: auto; overflow-x: hidden; }
-  .list-group-item a { overflow-wrap: anywhere; word-break: break-word; }
   .detail-card{transition:transform .2s ease,box-shadow .2s ease;border:1px solid rgba(0,0,0,.05)}
   .detail-card:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(0,0,0,.1)!important}
-  .scroll-container{scroll-behavior:smooth}
+
+  .scroll-container{scroll-behavior:smooth; overflow-y:auto; overflow-x:hidden}
   .scroll-container::-webkit-scrollbar{width:8px}
   .scroll-container::-webkit-scrollbar-track{background:#f1f1f1;border-radius:4px}
   .scroll-container::-webkit-scrollbar-thumb{background:#a8a8a8;border-radius:4px}
   .scroll-container::-webkit-scrollbar-thumb:hover{background:#888}
+
+  .list-group-item a{overflow-wrap:anywhere; word-break:break-word}
 </style>
 {% endwith %}
 {% endblock %}

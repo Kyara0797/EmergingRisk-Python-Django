@@ -4,13 +4,17 @@
 <div class="container">
   <h2 class="my-4">Dashboard</h2>
 
-  <!-- Categories -->
+  <!-- =========================
+       Categories
+       ========================= -->
   <div class="row mt-4">
     <div class="col-12">
       <div class="card">
-        <div class="card-header bg-primary text-white">
-          <h5 class="mb-0"><i class="fas fa-tags me-2"></i>Categories</h5>
+        <!-- 🎨 SECTION HEADER COLOR (Categories/Threats/Events comparten este estilo) -->
+        <div class="card-header section-header">
+          <h5 class="mb-0 text-white"><i class="fas fa-tags me-2"></i>Categories</h5>
         </div>
+
         <div class="card-body">
           <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-4">
             {% for category in categories %}
@@ -43,16 +47,20 @@
             {% endfor %}
           </div>
         </div>
+
       </div>
     </div>
   </div>
 
-  <!-- Threats -->
+  <!-- =========================
+       Threats
+       ========================= -->
   <div class="row mt-4">
     <div class="col-12">
       <div class="card">
-        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-          <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Recent Threats</h5>
+        <!-- 🎨 SECTION HEADER COLOR (mismo que Categories/Events) -->
+        <div class="card-header section-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 text-white"><i class="fas fa-list-alt me-2"></i>Recent Threats</h5>
           <a href="{% url 'theme_list_all' %}" class="btn btn-sm btn-light">View All</a>
         </div>
 
@@ -71,7 +79,7 @@
                 {% for theme in themes %}
                 <tr data-href="{% url 'theme_detail' pk=theme.id %}">
                   <td>
-                    <a href="{% url 'theme_detail' pk=theme.id %}" class="truncate" title="{{ theme.name }}">
+                    <a href="{% url 'theme_detail' pk=theme.id %}" class="truncate fw-semibold" title="{{ theme.name }}">
                       {{ theme.name }}
                     </a>
                   </td>
@@ -80,7 +88,7 @@
                     {{ theme.created_at|date:"Y-m-d" }}
                   </td>
                   <td>
-                    <span class="badge bg-{{ theme.get_risk_color }}">{{ theme.risk_rating }}</span>
+                    <span class="badge bg-{{ theme.get_risk_color }}">{{ theme.get_risk_rating_display }}</span>
                   </td>
                 </tr>
                 {% endfor %}
@@ -93,20 +101,25 @@
     </div>
   </div>
 
-  <!-- Events -->
+  <!-- =========================
+       Events
+       ========================= -->
   <div class="row mt-4">
     <div class="col-12">
       <div class="card">
-        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-          <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Recent Events</h5>
+        <!-- 🎨 SECTION HEADER COLOR (mismo que Categories/Threats) -->
+        <div class="card-header section-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 text-white"><i class="fas fa-calendar-alt me-2"></i>Recent Events</h5>
           <a href="{% url 'event_list' %}" class="btn btn-sm btn-light">View All</a>
         </div>
+
         <div class="card-body">
 
-          <!-- Controles -->
-          <div class="row mb-3 align-items-center">
-            <div class="col-12 col-md-4 d-flex align-items-center gap-2 mb-2 mb-md-0">
-              <label class="mb-0">Show</label>
+          <!-- Toolbar en una sola fila -->
+          <div id="eventsToolbar"
+               class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div class="d-flex align-items-center gap-2">
+              <label for="eventShowCount" class="mb-0">Show</label>
               <select id="eventShowCount" class="form-select form-select-sm" style="width:auto;">
                 <option value="5" selected>5</option>
                 <option value="10">10</option>
@@ -115,30 +128,23 @@
               </select>
               <span class="text-muted small">Events</span>
             </div>
-            <div class="col-12 col-md-8">
-              <div class="d-flex justify-content-md-end align-items-center gap-2">
-                <label for="eventSearch" class="mb-0 fw-medium">Event Search:</label>
-                <div class="input-group input-group-sm" style="max-width: 360px;">
-                  <span class="input-group-text"><i class="fas fa-search"></i></span>
-                  <input type="text" id="eventSearch" class="form-control" placeholder="Search events by name...">
-                </div>
-              </div>
+
+            <div class="btn-group btn-group-sm" role="group" aria-label="Sort events">
+              <button type="button" class="btn btn-outline-secondary sort-event" data-sort="name">Name</button>
+              <button type="button" class="btn btn-outline-secondary sort-event" data-sort="date">Date</button>
+              <button type="button" class="btn btn-outline-secondary sort-event" data-sort="risk">Risk</button>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+              <label for="eventSearch" class="mb-0">Search events:</label>
+              <input type="text" id="eventSearch" class="form-control form-control-sm"
+                     placeholder="Search events by name…" style="max-width:360px;">
             </div>
           </div>
 
-          <!-- Orden -->
-          <div class="row mb-3">
-            <div class="col-12 text-end">
-              <div class="btn-group btn-group-sm" role="group">
-                <button type="button" class="btn btn-outline-secondary sort-event" data-sort="name">Name</button>
-                <button type="button" class="btn btn-outline-secondary sort-event" data-sort="date">Date</button>
-                <button type="button" class="btn btn-outline-secondary sort-event" data-sort="risk">Risk</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Lista -->
-          <div class="accordion" id="eventsAccordion">
+          <!-- Lista (Acordeón) -->
+          <!-- 👇 Agregamos init-limit para mostrar 5 en el primer render -->
+          <div class="accordion init-limit" id="eventsAccordion">
             {% for event in events %}
             <div class="accordion-item border-0 event-item"
                  data-name="{{ event.name|lower }}"
@@ -148,17 +154,22 @@
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                         data-bs-target="#collapse{{ event.id }}" aria-expanded="false"
                         aria-controls="collapse{{ event.id }}">
-                  <div class="d-flex w-100 justify-content-between align-items-center">
-                    <div class="me-3">
+                  <div class="event-row">
+                    <div class="event-left">
                       <strong class="event-name">{{ event.name }}</strong>
-                      <div class="small text-muted event-date">{{ event.date_identified|date:"Y-m-d" }}</div>
                     </div>
-                    <span class="badge bg-{{ event.get_risk_color }} me-2 event-risk">
-                      {{ event.get_risk_rating_display }}
-                    </span>
+                    <div class="event-center">
+                      <span class="event-date">{{ event.date_identified|date:"Y-m-d" }}</span>
+                    </div>
+                    <div class="event-right">
+                      <span class="badge bg-{{ event.get_risk_color }} event-risk">
+                        {{ event.get_risk_rating_display }}
+                      </span>
+                    </div>
                   </div>
                 </button>
               </h2>
+
               <div id="collapse{{ event.id }}" class="accordion-collapse collapse"
                    aria-labelledby="heading{{ event.id }}" data-bs-parent="#eventsAccordion">
                 <div class="accordion-body pt-2">
@@ -210,11 +221,15 @@
                   {% endif %}
                   {% endwith %}
 
-                  <div class="mt-3 text-center">
-                    <a href="{% url 'add_source' event_pk=event.id %}" class="btn btn-sm btn-outline-primary">
-                      <i class="fas fa-plus me-1"></i> Add Source
-                    </a>
-                  </div>
+                  {% if request.user.is_authenticated %}
+                    {% if request.user.is_staff or request.user.is_superuser %}
+                      <div class="mt-3 text-center">
+                        <a href="{% url 'add_source' event_pk=event.id %}" class="btn btn-sm btn-outline-primary">
+                          <i class="fas fa-plus me-1"></i> Add Source
+                        </a>
+                      </div>
+                    {% endif %}
+                  {% endif %}
                 </div>
               </div>
             </div>
@@ -233,11 +248,10 @@
           <div class="text-center p-4">
             <i class="fas fa-calendar-times fa-2x text-muted mb-2"></i>
             <p class="text-muted">No events found</p>
-            <a href="{% url 'add_event_redirect' %}" class="btn btn-primary btn-sm">
-              <i class="fas fa-plus me-1"></i> Add Event
-            </a>
+            <a href="{% url 'event_list' %}" class="btn btn-outline-secondary btn-sm">View All</a>
           </div>
           {% endif %}
+
         </div>
       </div>
     </div>
@@ -245,81 +259,161 @@
 </div>
 
 <style>
-  .accordion-button:not(.collapsed) { background-color:#f8f9fa; box-shadow: inset 0 -1px 0 rgba(0,0,0,.125); }
-  .truncate { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .table-clickable tbody tr { cursor:pointer; }
-  .table-fixed { table-layout:fixed; }
+  /* =========================
+     🎨 COLORES DE HEADER
+     Cambia estas variables para recolorear las 3 secciones
+     ========================= */
+  :root{
+    --dash-header-bg: #0d6efd;   /* <- COLOR DE FONDO DE Categories/Threats/Events */
+    --dash-header-fg: #ffffff;   /* <- COLOR DEL TEXTO/ICONOS */
+  }
+  .section-header{
+    background-color: var(--dash-header-bg) !important;
+    color: var(--dash-header-fg) !important;
+    border-bottom: none;
+  }
+  .section-header .btn{ color:#0d6efd; } /* botón “View All” sobre header azul */
 
-  .col-name { width: 42%; }
-  .col-category { width: 22%; }
-  .col-date { width: 18%; }
-  .col-risk { width: 18%; }
-
-  .event-item.hidden { display:none !important; }
-  .event-item.highlight .accordion-button { background-color:#fff3cd !important; border-color:#ffeaa7 !important; }
-  #eventsAccordion { max-height: 600px; overflow-y: auto; }
-
+  /* ===== utilidades generales ===== */
+  .accordion-button:not(.collapsed){ background-color:#f8f9fa; box-shadow: inset 0 -1px 0 rgba(0,0,0,.125); }
+  .truncate{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .table-clickable tbody tr{ cursor:pointer; }
+  .table-fixed{ table-layout:fixed; }
   .text-purple { color:#6f42c1; }
-  table .badge { font-weight:600; }
-  .card { box-shadow:0 0.125rem 0.25rem rgba(0,0,0,.075); }
+  table .badge{ font-weight:600; }
+  .card{ box-shadow:0 0.125rem 0.25rem rgba(0,0,0,.075); }
 
-  .sort-event.active { background-color:#6c757d; color:#fff; border-color:#6c757d; }
+  /* ===== Threats: columnas fijas ===== */
+  .col-name{ width:42%; }
+  .col-category{ width:22%; }
+  .col-date{ width:18%; }
+  .col-risk{ width:18%; }
 
-  .source-card { cursor:pointer; transition:all .2s ease; }
-  .source-card:hover { transform:translateY(-2px); box-shadow:0 4px 8px rgba(0,0,0,0.12); background-color:#f8f9fa; }
-
-  /* Paginación compacta */
-  #eventsPagination .page-link { padding: .25rem .5rem; }
-
-  /* Opcional: armoniza el select de DataTables con Bootstrap */
-  .dataTables_length select {
-    display: inline-block;
-    width: auto;
-    min-height: 32px;
+  /* ===== Threats: barras superior e inferior en UNA SOLA FILA ===== */
+  /* anulamos floats del tema de DataTables que rompen el layout */
+  #themesTable_wrapper .dataTables_length,
+  #themesTable_wrapper .dataTables_filter,
+  #themesTable_wrapper .dataTables_paginate {
+    float: none !important;
+  }
+  /* contenedores flex que forzamos vía JS */
+  #themesTable_wrapper .dt-top-flex,
+  #themesTable_wrapper .dt-bottom-flex{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:1rem;
+    flex-wrap:nowrap;
+    margin-bottom:.5rem;
+  }
+  #themesTable_wrapper .dt-top-flex .dataTables_length,
+  #themesTable_wrapper .dt-top-flex .dataTables_filter{
+    display:flex;
+    align-items:center;
+    gap:.5rem;
+    margin:0;
+    white-space:nowrap;
+  }
+  #themesTable_wrapper .dt-top-flex label{ margin:0; font-weight:500; }
+  #themesTable_wrapper .dt-top-flex .dataTables_filter input[type="search"]{ min-width:240px; }
+  #themesTable_wrapper .dt-bottom-flex .dataTables_info{
+    margin:0;
+    white-space:nowrap;
+  }
+  #themesTable_wrapper .dt-bottom-flex .dataTables_paginate{
+    margin-left:auto;   /* empuja la paginación a la derecha */
+  }
+  /* responsive */
+  @media (max-width: 768px){
+    #themesTable_wrapper .dt-top-flex,
+    #themesTable_wrapper .dt-bottom-flex{ flex-wrap:wrap; }
+    #themesTable_wrapper .dt-top-flex .dataTables_filter input[type="search"]{ min-width:180px; }
   }
 
-  /* ===== Alinear controles de DataTables (Recent Threats) ===== */
-  #themesTable_wrapper .dataTables_length,
-  #themesTable_wrapper .dataTables_filter {
+  /* ===== Events: fila del acordeón con fecha centrada ===== */
+  :root{
+    --event-date-w: 160px;   /* <- ajusta si quieres una caja de fecha más ancha/estrecha */
+  }
+
+  .event-row{
+    position: relative;
     display: flex;
     align-items: center;
-    margin-bottom: 1rem;
-  }
-  #themesTable_wrapper .dataTables_length { float: left; }
-  #themesTable_wrapper .dataTables_filter { float: right; }
-
-  #themesTable_wrapper .dataTables_length label,
-  #themesTable_wrapper .dataTables_filter label {
-    margin: 0;
-    font-weight: 500;
-  }
-  #themesTable_wrapper .dataTables_length select {
-    margin: 0 .4rem;
-    min-height: 32px;
-  }
-  #themesTable_wrapper .dataTables_filter input[type="search"] {
-    margin-left: .4rem;
-    min-width: 180px;
+    width: 100%;
+    column-gap: 12px;
   }
 
-  /* Responsive: en pantallas estrechas, apila */
-  @media (max-width: 576px) {
-    #themesTable_wrapper .dataTables_length,
-    #themesTable_wrapper .dataTables_filter {
-      float: none;
-      justify-content: space-between;
-      margin-bottom: .75rem;
-    }
+  /* Columna izquierda: nombre, con elipsis y con tope para no invadir la zona central */
+  .event-left{
+    min-width: 0;
+    padding-right: .75rem;
+    /* no ocupar más de la mitad libre (deja hueco para la fecha centrada) */
+    max-width: calc(50% - (var(--event-date-w) * 0.5) - 12px);
   }
+  .event-left .event-name{
+    display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Columna central: fecha SIEMPRE centrada respecto a TODA la fila */
+  .event-center{
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: var(--event-date-w);
+    text-align: center;
+    color: #6c757d;
+    font-size: .95rem;
+    font-variant-numeric: tabular-nums; /* dígitos monoespaciados -> columnas aún más alineadas */
+  }
+
+  /* Columna derecha: badge de riesgo, alineado a la derecha, sin invadir la zona central */
+  .event-right{
+    margin-left: auto;
+    white-space: nowrap;
+    padding-left: .75rem;
+    max-width: calc(50% - (var(--event-date-w) * 0.5) - 12px);
+  }
+
+  /* Responsive: reducimos la caja de fecha para pantallas pequeñas */
+  @media (max-width: 768px){
+    :root{ --event-date-w: 140px; }
+  }
+  @media (max-width: 576px){
+    :root{ --event-date-w: 120px; }
+  }
+
+  .event-item.hidden,
+  .event-item.filtered-out{
+    display: none !important;
+  }
+
+  /* ===== Tarjetas de fuente ===== */
+  .source-card{ cursor:pointer; transition:all .2s ease; }
+  .source-card:hover{ transform:translateY(-2px); box-shadow:0 4px 8px rgba(0,0,0,0.12); background-color:#f8f9fa; }
+
+  /* ===== Paginación Events ===== */
+  #eventsPagination .page-link{ padding:.25rem .5rem; }
+
+  /* ===== Recent Events: limitar a 5 en el primer render (antes de que JS pagine) ===== */
+  #eventsAccordion.init-limit .event-item{ display:none; }
+  #eventsAccordion.init-limit .event-item:nth-child(-n+5){ display:block; }
 </style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-/* ===== Threats: DataTable ===== */
-$(function () {
-  const themesDT = $('#themesTable').DataTable({
-    dom: 'lfrtip',                 // asegura control de longitud (l)
+/* =========================
+   Threats: DataTable con barras top/bottom en una sola fila
+   ========================= */
+$(function(){
+  const $table = $('#themesTable');
+
+  const dt = $table.DataTable({
+    dom: 'lfrtip',
     autoWidth: false,
     columnDefs: [
       { targets: 0, width: '42%', className: 'col-name' },
@@ -328,8 +422,8 @@ $(function () {
       { targets: 3, width: '18%', className: 'col-risk' }
     ],
     order: [[2, 'desc']],
-    lengthMenu: [[5, 10, 20, -1], [5, 10, 20, 'All']], // opciones + 'All'
-    pageLength: 5,                                      // arranque en 5
+    lengthMenu: [[5,10,20,-1],[5,10,20,'All']],
+    pageLength: 5,
     language: {
       emptyTable: 'No threats available',
       info: 'Showing _START_ to _END_ of _TOTAL_ threats',
@@ -341,39 +435,74 @@ $(function () {
     }
   });
 
-  $('#themesTable').on('click', 'tbody tr', function (e) {
+  // Reacomoda las barras top/bottom cada vez que DataTables dibuja
+  function fixThreatsBars () {
+    const $wrap = $('#themesTable_wrapper');
+
+    // TOP: length + filter
+    const $len = $wrap.find('.dataTables_length');
+    const $fil = $wrap.find('.dataTables_filter');
+    if ($len.length && $fil.length && !$len.parent().hasClass('dt-top-flex') && !$fil.parent().hasClass('dt-top-flex')) {
+      const $topFlex = $('<div class="dt-top-flex"></div>');
+      $topFlex.insertBefore($wrap.find('table').first());
+      $topFlex.append($len).append($fil);
+    }
+
+    // BOTTOM: info + paginate
+    const $info = $wrap.find('.dataTables_info');
+    const $pag  = $wrap.find('.dataTables_paginate');
+    if ($info.length && $pag.length && !$info.parent().hasClass('dt-bottom-flex') && !$pag.parent().hasClass('dt-bottom-flex')) {
+      const $bottomFlex = $('<div class="dt-bottom-flex"></div>');
+      const $after = $wrap.find('.dataTables_scroll').length ? $wrap.find('.dataTables_scroll') : $wrap.find('table').last();
+      $bottomFlex.insertAfter($after);
+      $bottomFlex.append($info).append($pag);
+    }
+  }
+
+  dt.on('init.dt draw.dt', fixThreatsBars);
+  fixThreatsBars();
+
+  // Navegar al hacer click en una fila (salvo en links/botones)
+  $table.on('click','tbody tr',function(e){
     if ($(e.target).closest('a,button,.btn').length) return;
     const href = $(this).attr('data-href');
     if (href) window.location = href;
   });
 });
 
-/* ===== Events: búsqueda, orden y paginación ===== */
-document.addEventListener('DOMContentLoaded', function () {
-  const eventSearch = document.getElementById('eventSearch');
-  const eventItems  = Array.from(document.querySelectorAll('.event-item'));
+/* =========================
+   Events: búsqueda, orden y paginación
+   ========================= */
+document.addEventListener('DOMContentLoaded', function(){
+  const eventSearch     = document.getElementById('eventSearch');
+  const eventItems      = Array.from(document.querySelectorAll('.event-item'));
   const eventsAccordion = document.getElementById('eventsAccordion');
-  const showSelect = document.getElementById('eventShowCount');
-  const pager = document.getElementById('eventsPagination');
-  const countText = document.getElementById('eventsCountText');
+  const showSelect      = document.getElementById('eventShowCount');
+  const pager           = document.getElementById('eventsPagination');
+  const countText       = document.getElementById('eventsCountText');
 
   let currentSort = 'name';
   let sortAscending = true;
   let currentPage = 1;
 
-  function getPageSize() {
+  function getPageSize(){
     const v = showSelect.value;
     return v === 'all' ? Infinity : parseInt(v, 10);
   }
 
-  function visibleItems() {
+  function visibleItems(){
     return eventItems.filter(el => !el.classList.contains('filtered-out'));
   }
 
-  function renderPagination(total, pageSize) {
-    if (!isFinite(pageSize) || total <= pageSize) {
+  function renderPagination(total, pageSize){
+    if (!total){
+      countText.textContent = 'No events';
       pager.innerHTML = '';
-      countText.textContent = total ? `Showing 1–${Math.min(total, pageSize)} of ${total}` : 'No events';
+      return;
+    }
+    if (!isFinite(pageSize) || total <= pageSize){
+      countText.textContent = `Showing 1 to ${total} of ${total} events`;
+      pager.innerHTML = '';
       return;
     }
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -386,34 +515,28 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     let html = '';
-    html += makePage('«', currentPage-1, currentPage===1);
-    for (let p=1; p<=totalPages; p++) {
-      if (p===1 || p===totalPages || Math.abs(p-currentPage)<=1) {
-        html += makePage(p, p, false, p===currentPage);
-      } else if (Math.abs(p-currentPage)===2) {
-        html += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
-      }
-    }
-    html += makePage('»', currentPage+1, currentPage===totalPages);
+    html += makePage('Previous', currentPage-1, currentPage===1);
+    for (let p=1; p<=totalPages; p++){ html += makePage(p, p, false, p===currentPage); }
+    html += makePage('Next', currentPage+1, currentPage===totalPages);
     pager.innerHTML = html;
 
     const start = (currentPage-1)*pageSize + 1;
-    const end = Math.min(currentPage*pageSize, total);
-    countText.textContent = `Showing ${start}–${end} of ${total}`;
+    const end   = Math.min(currentPage*pageSize, total);
+    countText.textContent = `Showing ${start} to ${end} of ${total} events`;
   }
 
-  function applyShowPage() {
+  function applyShowPage(){
     const pageSize = getPageSize();
     const vis = visibleItems();
     const total = vis.length;
 
-    if (!isFinite(pageSize)) {
+    if (!isFinite(pageSize)){
       vis.forEach(el => el.classList.remove('hidden'));
       renderPagination(total, pageSize);
       return;
     }
     const startIdx = (currentPage-1)*pageSize;
-    const endIdx = startIdx + pageSize;
+    const endIdx   = startIdx + pageSize;
 
     vis.forEach((el, idx) => {
       if (idx >= startIdx && idx < endIdx) el.classList.remove('hidden');
@@ -423,7 +546,7 @@ document.addEventListener('DOMContentLoaded', function () {
     renderPagination(total, pageSize);
   }
 
-  function searchEvents() {
+  function searchEvents(){
     const term = (eventSearch.value || '').toLowerCase().trim();
     eventItems.forEach(item => {
       const text = item.textContent.toLowerCase();
@@ -436,24 +559,17 @@ document.addEventListener('DOMContentLoaded', function () {
     applyShowPage();
   }
 
-  function sortEvents(sortBy, ascending) {
+  function sortEvents(sortBy, ascending){
     const items = visibleItems().slice();
     items.sort((a, b) => {
       let av, bv;
-      if (sortBy === 'name') {
-        av = a.getAttribute('data-name') || '';
-        bv = b.getAttribute('data-name') || '';
-      } else if (sortBy === 'date') {
-        av = a.getAttribute('data-date') || '00000000';
-        bv = b.getAttribute('data-date') || '00000000';
-      } else if (sortBy === 'risk') {
+      if (sortBy === 'name'){ av = a.getAttribute('data-name') || ''; bv = b.getAttribute('data-name') || ''; }
+      else if (sortBy === 'date'){ av = a.getAttribute('data-date') || '00000000'; bv = b.getAttribute('data-date') || '00000000'; }
+      else if (sortBy === 'risk'){
         const order = { critical: 0, high: 1, medium: 2, low: 3 };
         av = order[a.getAttribute('data-risk')] ?? 9;
         bv = order[b.getAttribute('data-risk')] ?? 9;
-      } else {
-        av = a.getAttribute('data-name') || '';
-        bv = b.getAttribute('data-name') || '';
-      }
+      } else { av = a.getAttribute('data-name') || ''; bv = b.getAttribute('data-name') || ''; }
       if (av < bv) return ascending ? -1 : 1;
       if (av > bv) return ascending ? 1 : -1;
       return 0;
@@ -463,10 +579,10 @@ document.addEventListener('DOMContentLoaded', function () {
     applyShowPage();
   }
 
+  // UI
   eventSearch.addEventListener('input', () => { searchEvents(); sortEvents(currentSort, sortAscending); });
-
   document.querySelectorAll('.sort-event').forEach(btn => {
-    btn.addEventListener('click', function () {
+    btn.addEventListener('click', function(){
       const sortBy = this.getAttribute('data-sort');
       if (sortBy === currentSort) sortAscending = !sortAscending;
       else { currentSort = sortBy; sortAscending = true; }
@@ -475,26 +591,20 @@ document.addEventListener('DOMContentLoaded', function () {
       sortEvents(currentSort, sortAscending);
     });
   });
-
-  showSelect.addEventListener('change', () => {
-    currentPage = 1;
-    applyShowPage();
-  });
-
+  showSelect.addEventListener('change', () => { currentPage = 1; applyShowPage(); });
   document.getElementById('eventsPagination').addEventListener('click', function(e){
-    const a = e.target.closest('a.page-link');
-    if (!a) return;
+    const a = e.target.closest('a.page-link'); if (!a) return;
     e.preventDefault();
     const page = parseInt(a.dataset.page, 10);
-    if (!isNaN(page)) {
-      currentPage = Math.max(1, page);
-      applyShowPage();
-    }
+    if (!isNaN(page)){ currentPage = Math.max(1, page); applyShowPage(); }
   });
 
-  // Inicial
-  searchEvents();                // filtra (vacío) y prepara lista
-  sortEvents(currentSort, true); // orden inicial por name asc
+  // Inicial: 5 por defecto + orden por nombre
+  searchEvents();
+  sortEvents(currentSort, true);
+
+  // 👇 Quita la máscara de primer render cuando ya se aplicó la paginación
+  document.getElementById('eventsAccordion').classList.remove('init-limit');
 });
 
 /* Source cards clickable */

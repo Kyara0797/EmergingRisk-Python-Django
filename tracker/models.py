@@ -259,11 +259,11 @@ LINE_OF_BUSINESS_CHOICES = [
     ('All', 'All'),
     ('APAC', 'APAC'),
     ('EMEA', 'EMEA'),
-    ('Evaluation in progress', 'Evaluation in progress'),
     ('FIG', 'FIG'),
     ('Issuer', 'Issuer'),
     ('LATAM', 'LATAM'),
     ('Merchant', 'Merchant'),
+    ('Evaluation in progress', 'Evaluation in progress'),
     
 ]
 
@@ -298,6 +298,7 @@ class Category(models.Model):
         return self.name
 
 class Theme(models.Model):
+    is_active = models.BooleanField(default=True, db_index=True)
     category = models.ForeignKey(
         Category, 
         on_delete=models.CASCADE, 
@@ -326,8 +327,6 @@ class Theme(models.Model):
     
     def get_risk_color(self):
         key = (self.risk_rating or '').strip().upper()
-        if key == 'MEDIUM':  # alias por si quedó algún registro antiguo
-            key = 'MEDIUM'
         return RISK_COLORS.get(self.risk_rating, 'secondary')
 
     def clean(self):
@@ -347,6 +346,8 @@ class Theme(models.Model):
         return f"{self.name} ({self.category})"
 
 class Event(models.Model):
+    is_active = models.BooleanField(default=True, db_index=True)
+    
     # Definición de constantes para choices
     ESCALATING = 'ESCALATING'
     MAINTAINING = 'MAINTAINING'
@@ -539,3 +540,20 @@ class UserAccessLog(models.Model):
         
     def __str__(self):
         return f"{self.user.username} - {self.login_time}"
+    
+
+class TempUpload(models.Model):
+    KIND_CHOICES = (("MAIN", "Main"), ("EXTRA", "Extra"))
+
+    batch_id = models.CharField(max_length=40, db_index=True)  # UUID por formulario
+    user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+    file = models.FileField(upload_to="temp_sources/%Y/%m/%d/")
+    original_name = models.CharField(max_length=255)
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-uploaded_at"]
+
+    def __str__(self):
+        return f"{self.original_name} ({self.kind})"

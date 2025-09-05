@@ -8,9 +8,25 @@
       <h4 class="mb-0">
         <i class="fas fa-edit me-2"></i>Editing: {{ object.name }}
       </h4>
-      <a href="{% url 'view_theme' pk=object.pk %}" class="btn btn-light btn-sm">
-        <i class="fas fa-arrow-left me-1"></i> Back to Threat
-      </a>
+
+      <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'view_theme' pk=object.pk %}" class="btn btn-light btn-sm">
+          <i class="fas fa-arrow-left me-1"></i> Back to Threat
+        </a>
+
+        {# SIN paréntesis: Django template no los permite en condiciones #}
+        {% if user.is_authenticated and user.is_staff or user.is_authenticated and user.is_superuser %}
+          <form method="post" action="{% url 'toggle_theme_active' pk=object.pk %}" class="d-inline ms-2">
+            {% csrf_token %}
+            <button type="submit"
+                    class="btn btn-outline-{{ object.is_active|yesno:'danger,success' }} btn-sm"
+                    onclick="return confirm('{{ object.is_active|yesno:"Archive this threat?,Restore this threat?" }}');">
+              <i class="fas fa-{{ object.is_active|yesno:'archive,rotate-left' }}"></i>
+              {{ object.is_active|yesno:'Archive,Restore' }}
+            </button>
+          </form>
+        {% endif %}
+      </div>
     </div>
 
     <form method="post" id="theme-edit-form" novalidate>
@@ -44,7 +60,7 @@
                   {% endif %}
                 </div>
 
-                <!-- Name (máx 30) -->
+                <!-- Name (max 30) -->
                 <div class="mb-3">
                   <label class="form-label">
                     Name
@@ -189,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function normalizeToChoice(cardValue) {
     const v = String(cardValue || '').toLowerCase();
     return validValues.find(opt => String(opt).toLowerCase() === v) || '';
-  }
+    }
   function syncCardsFromSelect() {
     const val = riskSelect ? String(riskSelect.value).toLowerCase() : '';
     riskCards.forEach(card => {

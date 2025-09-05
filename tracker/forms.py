@@ -7,7 +7,9 @@ from datetime import date, datetime, time
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from urllib.parse import urlparse
-
+from django.contrib.auth import get_user_model
+from .models import Source
+from urllib.parse import urlparse
 
 ALLOWED_FILE_EXTS = {'.pdf', '.doc', '.docx'}
 
@@ -85,12 +87,18 @@ class ThemeForm(forms.ModelForm):
     
 class EventForm(forms.ModelForm):
     name = forms.CharField(
-        max_length=30,
-        widget=forms.TextInput(attrs={
-            'placeholder': 'Enter event name (max 30 characters)',
-            'class': 'form-control title-input'
-        }),
-        required=True
+        min_length=3,
+    max_length=30,
+    widget=forms.TextInput(attrs={
+        'placeholder': 'Enter event name (3–30 characters)',
+        'class': 'form-control title-input'
+    }),
+    required=True,
+    error_messages={
+        'required': 'The name is required.',
+        'min_length': 'Minimum 3 characters.',
+        'max_length': 'Maximum 30 characters.'  
+    }
     )
     
     theme = forms.ModelChoiceField(
@@ -135,7 +143,7 @@ class EventForm(forms.ModelForm):
     )
     
     impacted_lines = forms.MultipleChoiceField(
-        choices=sorted(LINE_OF_BUSINESS_CHOICES, key=lambda x: x[1]),
+        choices=LINE_OF_BUSINESS_CHOICES,   # ⬅️ respetar el orden definido
         widget=forms.CheckboxSelectMultiple(attrs={'class': 'business-lines'}),
         label="Impacted Business Lines",
         required=True
@@ -236,10 +244,20 @@ class EventForm(forms.ModelForm):
         self.validate_taxonomy_hierarchy(lv1, lv2, lv3)
         
         # Handle "All" selection for impacted lines
-        impacted_lines = cleaned_data.get('impacted_lines', [])
+        impacted_lines = list(dict.fromkeys(cleaned_data.get('impacted_lines', [])))
+    
         if 'All' in impacted_lines:
-            cleaned_data['impacted_lines'] = [choice[0] for choice in LINE_OF_BUSINESS_CHOICES if choice[0] != 'All']
-        
+            selected = [value for value, _ in LINE_OF_BUSINESS_CHOICES
+                if value not in {'All', 'Evaluation in progress'}]
+        else:
+            # quitar "All" si vino mezclado
+            selected = [v for v in impacted_lines if v != 'All']
+
+        # mantener el orden declarativo de LINE_OF_BUSINESS_CHOICES
+        ordered_selected = [value for value, _ in LINE_OF_BUSINESS_CHOICES if value in selected]
+        cleaned_data['impacted_lines'] = ordered_selected
+        # --------------------------------------------------------------------
+
         return cleaned_data
     
     def validate_taxonomy_hierarchy(self, lv1, lv2, lv3):
@@ -307,15 +325,15 @@ _URL_VALIDATOR = URLValidator(schemes=["http", "https"])
 def _norm(s: str) -> str:
     return " ".join((s or "").strip().lower().split())
 
+def clean_name(self):
+    v = (self.cleaned_data.get('name') or '').strip()
+    if len(v) < 3:
+        raise forms.ValidationError('The name is required (3–30 characters, not just spaces).')
+    return v
 
 class MultiFileInput(forms.ClearableFileInput):
     """File input con multiple=True (para extra_files, no para file_upload del modelo)."""
     allow_multiple_selected = True
-
-
-from django import forms
-from .models import Source
-from urllib.parse import urlparse
 
 
 class SourceForm(forms.ModelForm):
@@ -369,13 +387,13 @@ class SourceForm(forms.ModelForm):
         inst = getattr(self, "instance", None)
         if inst and getattr(inst, "pk", None) and getattr(inst, "source_date", None):
             sd = inst.source_date
-            # si es datetime → pásalo a date
+           
             if isinstance(sd, datetime):
                 try:
                     sd = timezone.localtime(sd).date()
                 except Exception:
                     sd = sd.date()
-            # sd es date aquí
+            
             self.initial["source_date"] = sd.strftime("%Y-%m-%d")
 
     def clean_link_or_file(self):
@@ -433,17 +451,46 @@ class SourceForm(forms.ModelForm):
         cleaned["source_type"] = st
         return cleaned
     
+User = get_user_model()
+
 class RegisterForm(UserCreationForm):
     email = forms.EmailField(
         required=True,
-        widget=forms.EmailInput(attrs={'class': 'form-control'})
+        label="Email",
+        widget=forms.EmailInput(attrs={
+            "class": "form-control",
+            "placeholder": "you@example.com",
+            "autocomplete": "email",
+        })
     )
-    
-    class Meta:
+
+    class Meta(UserCreationForm.Meta):
         model = User
-        fields = ['username', 'email', 'password1', 'password2']
+        fields = ("username", "email", "password1", "password2")
         widgets = {
-            'username': forms.TextInput(attrs={'class': 'form-control'}),
-            'password1': forms.PasswordInput(attrs={'class': 'form-control'}),
-            'password2': forms.PasswordInput(attrs={'class': 'form-control'}),
+            "username": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Choose a username",
+                "autocomplete": "username",
+            }),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # password1/password2 NO son campos de modelo, por eso se estilan aquí
+        self.fields["password1"].widget.attrs.update({
+            "class": "form-control",
+            "placeholder": "Create a password",
+            "autocomplete": "new-password",
+        })
+        self.fields["password2"].widget.attrs.update({
+            "class": "form-control",
+            "placeholder": "Repeat your password",
+            "autocomplete": "new-password",
+        })
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("This email is already registered.")
+        return email

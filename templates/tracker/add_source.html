@@ -15,6 +15,9 @@
       <form method="post" enctype="multipart/form-data" id="add-source-form" novalidate>
         {% csrf_token %}
 
+        {# batch para mantener archivos staged entre intentos #}
+        <input type="hidden" name="upload_batch" value="{{ upload_batch }}">
+
         {% if form.non_field_errors %}
           <div class="alert alert-danger">{{ form.non_field_errors }}</div>
         {% endif %}
@@ -87,9 +90,24 @@
                   <h6 class="text-muted"><i class="fas fa-file-upload me-2"></i>File options</h6>
 
                   <label class="form-label">Main file (optional)</label>
-                  <input type="file" name="file_upload" class="form-control" id="id_file_upload"
+                  <input type="file" name="file_upload" class="form-control file-control" id="id_file_upload"
                          accept=".pdf,.doc,.docx,.eml,.msg">
                   {% if form.file_upload.errors %}<div class="invalid-feedback d-block">{{ form.file_upload.errors|join:", " }}</div>{% endif %}
+
+                  {# --- MOSTRAR MAIN STAGED, si existe --- #}
+                  {% if staged_main %}
+                    <div class="alert alert-info d-flex align-items-center mt-2 py-2">
+                      <i class="far fa-file me-2"></i>
+                      <div class="me-2">
+                        <strong>Pending main file:</strong> {{ staged_main.original_name }}
+                        <div class="small text-muted">This file will be attached on save.</div>
+                      </div>
+                      <button type="button" class="btn btn-outline-danger btn-sm ms-auto"
+                              onclick="dropTemp('{{ staged_main.id }}', this)" title="Remove">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </div>
+                  {% endif %}
 
                   <!-- Additional files -->
                   <div class="mt-3">
@@ -100,7 +118,7 @@
                       <div class="input-group mb-2 extra-file-row">
                         <input type="file"
                                name="extra_files"
-                               class="form-control"
+                               class="form-control file-control"
                                accept=".pdf,.doc,.docx,.eml,.msg">
                         <button type="button" class="btn btn-outline-danger" onclick="removeExtraFileRow(this)" title="Remove">
                           <i class="fas fa-times"></i>
@@ -111,6 +129,23 @@
                     <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addExtraFileRow()" title="Add file">
                       <i class="fas fa-plus"></i> Add another file
                     </button>
+
+                    {# --- LISTA DE EXTRAS STAGED --- #}
+                    {% if staged_extras %}
+                      <ul class="list-group mt-2">
+                        {% for tu in staged_extras %}
+                          <li class="list-group-item d-flex align-items-center py-2">
+                            <i class="far fa-file me-2"></i>
+                            <span class="me-auto">{{ tu.original_name }}</span>
+                            <button type="button" class="btn btn-outline-danger btn-sm"
+                                    onclick="dropTemp('{{ tu.id }}', this)" title="Remove">
+                              <i class="fas fa-times"></i>
+                            </button>
+                          </li>
+                        {% endfor %}
+                      </ul>
+                      <div class="form-text">Files above are already staged and won’t be lost on validation errors.</div>
+                    {% endif %}
 
                     <div class="form-text">You can upload multiple files (.pdf, .doc, .docx, .eml, .msg).</div>
                   </div>
@@ -173,13 +208,12 @@
           </div>
         </div>
 
-        {# ---- AQUI VA LO NUEVO: renderizar todos los hidden fields (incluye source_type) ---- #}
+        {# Hidden fields (incluye source_type) #}
         <div class="d-none">
           {% for hidden in form.hidden_fields %}
             {{ hidden }}
           {% endfor %}
         </div>
-        {# ------------------------------------------------------------------------------- #}
 
         <div class="d-flex justify-content-between">
           <a href="{{ cancel_url|default:'#' }}" class="btn btn-outline-secondary">
@@ -194,46 +228,69 @@
   </div>
 </div>
 
-{# === Estilos scopeados a esta pantalla === #}
 <style>
-  #add-source-screen .form-control,
+  /* Mantén altura cómoda en inputs, excepto archivos */
+  #add-source-screen .form-control:not([type="file"]),
   #add-source-screen .form-select{min-height:44px}
+
   #add-source-screen .card{box-shadow:0 .125rem .45rem rgba(0,0,0,.08);border-radius:.75rem}
   #add-source-screen .card-header{padding:.75rem 1rem}
   #add-source-screen .form-text{font-size:.88rem}
 
-  /* Inputs más legibles */
+  /* Inputs texto */
   #add-source-screen input[type="text"],
   #add-source-screen input[type="url"]{font-size:1rem}
 
-  /* Textareas grandes y cómodas */
-  #add-source-screen textarea#id_summary{
-    min-height: 220px;
-    font-size: 1rem;
-    line-height: 1.45;
+  /* Textareas */
+  #add-source-screen textarea#id_summary{min-height:220px;font-size:1rem;line-height:1.45}
+  #add-source-screen textarea#id_potential_impact_notes{min-height:160px;font-size:1rem;line-height:1.45}
+
+  /* === File inputs (Main + Additional): sin franjas y centrado vertical === */
+  #add-source-screen .file-control{
+    min-height: auto !important;
+    height: auto !important;
+    padding-top: .375rem !important;
+    padding-bottom: .375rem !important;
+    padding-left: 0 !important;  /* elimina la franja a la izquierda */
+    line-height: 1.5;
+    -webkit-appearance: none;
   }
-  #add-source-screen textarea#id_potential_impact_notes{
-    min-height: 160px;
-    font-size: 1rem;
-    line-height: 1.45;
+  #add-source-screen .file-control::file-selector-button,
+  #add-source-screen .file-control::-webkit-file-upload-button{
+    margin: 0;
+    padding: .375rem .75rem;
+    line-height: 1.5;
+    height: auto;
+  }
+  /* Alinear botón X con el file input dentro del input-group */
+  #add-source-screen .extra-file-row{ align-items: center; }
+  #add-source-screen .extra-file-row .btn{
+    height: auto;
+    padding: .375rem .75rem;
   }
 
-  /* Botones radio como pills activas */
-  #add-source-screen .btn-check:checked + .btn{
-    color:#fff !important;
-  }
-  #add-source-screen #piEsc.btn-check:checked + label.btn{background-color:#dc3545;border-color:#dc3545;}
-  #add-source-screen #piMain.btn-check:checked + label.btn{background-color:#ffc107;border-color:#ffc107;color:#212529 !important;}
-  #add-source-screen #piDec.btn-check:checked + label.btn{background-color:#198754;border-color:#198754;}
+  /* Pills activas */
+  #add-source-screen .btn-check:checked + .btn{color:#fff!important}
+  #add-source-screen #piEsc.btn-check:checked + label.btn{background:#dc3545;border-color:#dc3545}
+  #add-source-screen #piMain.btn-check:checked + label.btn{background:#ffc107;border-color:#ffc107;color:#212529!important}
+  #add-source-screen #piDec.btn-check:checked + label.btn{background:#198754;border-color:#198754}
 </style>
 
-{# Pasamos una bandera para limpiar la fecha SOLO en GET/primera carga #}
 <script>
-  const FORCE_EMPTY_DATE = {% if not form.errors and request.method != 'POST' %}true{% else %}false{% endif %};
-</script>
+  // Borrar un temp-upload en el cliente (se elimina de verdad al próximo submit)
+  function dropTemp(id, btn){
+    const form = document.getElementById('add-source-form');
+    const hid = document.createElement('input');
+    hid.type = 'hidden';
+    hid.name = 'drop_temp_ids';
+    hid.value = id;
+    form.appendChild(hid);
+    const box = btn.closest('.alert, .list-group-item');
+    if(box) box.remove();
+  }
 
-<script>
-  // name counter + maxlength (UI)
+  const FORCE_EMPTY_DATE = {% if not form.errors and request.method != 'POST' %}true{% else %}false{% endif %};
+
   (function(){
     const i=document.querySelector('input[name="name"]'), c=document.getElementById('nmCnt');
     if(i){ i.setAttribute('maxlength','30'); i.classList.add('title-input'); }
@@ -241,19 +298,15 @@
     i&&i.addEventListener('input',u); u();
   })();
 
-  // date: max hoy, sin futuro; requerido y vacío en primera carga
   (function(){
     const d=document.getElementById('id_source_date'); if(!d) return;
     const t=new Date(), p=n=>String(n).padStart(2,'0');
     d.max = `${t.getFullYear()}-${p(t.getMonth()+1)}-${p(t.getDate())}`;
     d.required = true;
-
     if(FORCE_EMPTY_DATE){ try{ d.value = ''; }catch(e){} }
-
     if(!d.getAttribute('placeholder')) d.setAttribute('placeholder','Select a date…');
   })();
 
-  // potential impact (buttons -> hidden select)
   (function(){
     const sel=document.getElementById('id_potential_impact')||document.querySelector('select[name="potential_impact"]');
     const map={piEsc:"ESCALATING",piMain:"MAINTAINING",piDec:"DECREASING"};
@@ -269,7 +322,6 @@
     });
   })();
 
-  // Mejorar textareas: placeholder si no viene desde el form
   (function(){
     const s=document.getElementById('id_summary');
     if(s && !s.placeholder){ s.placeholder = 'Concise summary of the source content…'; }
@@ -277,7 +329,6 @@
     if(n && !n.placeholder){ n.placeholder = 'Context, rationale, affected LOBs, uncertainties…'; }
   })();
 
-  // dynamic links
   function addLink(){
     const cont=document.getElementById('extra-links');
     const row=document.createElement('div'); row.className='input-group mb-2';
@@ -288,13 +339,12 @@
     cont.appendChild(row);
   }
 
-  // Additional files: multiple rows you can remove
   function addExtraFileRow(){
     const wrap = document.getElementById('extra-files-container');
     const row = document.createElement('div');
     row.className = 'input-group mb-2 extra-file-row';
     row.innerHTML = `
-      <input type="file" name="extra_files" class="form-control" accept=".pdf,.doc,.docx,.eml,.msg">
+      <input type="file" name="extra_files" class="form-control file-control" accept=".pdf,.doc,.docx,.eml,.msg">
       <button type="button" class="btn btn-outline-danger" onclick="removeExtraFileRow(this)" title="Remove">
         <i class="fas fa-times"></i>
       </button>
@@ -313,10 +363,9 @@
     row.remove();
   }
 
-  // URL validation (main + additional links)
   (function(){
     function isValidUrl(v){
-      if(!v) return true; // empty is allowed
+      if(!v) return true;
       v=v.trim();
       if(v.startsWith('mailto:')) return v.length>7 && v.includes('@');
       try{ const u=new URL(v); return ['http:','https:'].includes(u.protocol); }catch{ return false; }
@@ -342,7 +391,6 @@
     });
   })();
 
-  // soft duplicate-summary detection
   const existingSummaries = {{ existing_summaries_json|safe }};
   (function(){
     const el=document.getElementById('id_summary');
