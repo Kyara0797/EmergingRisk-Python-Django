@@ -1,4 +1,3 @@
-@login_required
 def view_theme(request, pk):
     theme = get_object_or_404(Theme, pk=pk)
     request.session['last_viewed_theme'] = theme.pk

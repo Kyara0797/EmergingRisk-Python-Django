@@ -363,7 +363,6 @@ def add_theme(request):
     return render(request, 'tracker/add_theme.html', {'form': form})
 
 @admin_required
-@login_required
 def toggle_theme_active(request, pk):
     if request.method != "POST":
         messages.error(request, "Invalid method.")
@@ -489,7 +488,7 @@ def _make_bundles(qs):
     return bundles
 
 
-@login_required
+
 def view_event(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
 
