@@ -1,30 +1,26 @@
 from django.urls import path, include
 from . import views
 from . import views as tracker_views
-from .views import SourceDetailView, secure_file_download
 from config import settings
 from django.conf.urls.static import static
-from django.views.generic.base import RedirectView
-from django.contrib.auth.decorators import login_required
-from django.contrib import admin
-from django.contrib.auth import views as auth_views
+
 from tracker import views_downloads
 
 
 urlpatterns = [
-    path("login/", auth_views.LoginView.as_view(
-        template_name="registration/login.html"
-    ), name="login"),
-    path("logout/", tracker_views.custom_logout, name="logout"),
-    path("register/", tracker_views.register, name="register"),
+    # path("login/", auth_views.LoginView.as_view(
+    #     template_name="registration/login.html"
+    # ), name="login"),
+    # path("logout/", tracker_views.custom_logout, name="logout"),
+    # path("register/", tracker_views.register, name="register"),
     
     # Home / dashboard
     
     path("", views.dashboard, name="dashboard"),
     # path("", RedirectView.as_view(pattern_name="dashboard", permanent=False)),
-    path("accounts/", include("django.contrib.auth.urls")),
+    # path("accounts/", include("django.contrib.auth.urls")),
     
-    path("admin/", admin.site.urls),
+    # path("admin/", admin.site.urls),
     
     # Threat
     path("themes/all/", views.theme_list_all, name="theme_list_all"),
