@@ -446,7 +446,10 @@ class RiskTaxonomyLv3(models.Model):
     
     def __str__(self):
         return self.name
- 
+
+def generate_download_token():
+    return uuid.uuid4().hex
+
 class Source(models.Model):
     is_active = models.BooleanField(default=True, db_index=True)
 
@@ -477,7 +480,12 @@ class Source(models.Model):
     link_or_file = models.URLField(max_length=500, blank=True)
     file_upload = models.FileField(upload_to='sources/%Y/%m/%d/', blank=True, null=True)
 
-    download_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    download_token = models.UUIDField(
+        default=uuid.uuid4,   
+        unique=True,
+        null=False,
+        editable=False,
+    )
 
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_sources')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -513,8 +521,12 @@ class SourceFileVersion(models.Model):
     replaced_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
     note = models.CharField(max_length=255, blank=True)
 
-    download_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-
+    download_token = models.UUIDField(
+        default=uuid.uuid4,   
+        unique=True,
+        null=False,
+        editable=False,
+    )
     class Meta:
         ordering = ["-replaced_at"]
 
