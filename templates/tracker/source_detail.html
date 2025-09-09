@@ -28,7 +28,7 @@
                 <i class="fas fa-edit me-1"></i> Edit
               </a>
 
-              {# --- Archive / Restore como POST (evita 'Invalid method') --- #}
+              {# --- Archive / Restore como POST --- #}
               <form action="{% url 'toggle_source_active' pk=src.id %}" method="post" class="d-inline">
                 {% csrf_token %}
                 {% if src.is_active %}

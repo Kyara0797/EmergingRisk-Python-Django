@@ -1,13 +1,14 @@
 from django.urls import path, include
 from . import views
 from . import views as tracker_views
-from .views import SourceDetailView
+from .views import SourceDetailView, secure_file_download
 from config import settings
 from django.conf.urls.static import static
 from django.views.generic.base import RedirectView
 from django.contrib.auth.decorators import login_required
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
+from tracker import views_downloads
 
 
 urlpatterns = [
@@ -57,7 +58,9 @@ urlpatterns = [
     path("source/<int:pk>/edit/", views.SourceUpdateView.as_view(), name="edit_source"),
     path("source/<int:pk>/delete/", views.SourceDeleteView.as_view(), name="delete_source"),
     path("source/<int:pk>/toggle/", views.toggle_source_active, name="toggle_source_active"),
-        
+    path("f/<uuid:token>/", views_downloads.secure_file_download, name="secure_file_download"),
+    path("f/<str:token>/", tracker_views.secure_file_download, name="secure_file_download"),
+
     # AJAX helpers
     path("ajax/themes/", views.get_themes, name="get_themes"),
     path("ajax/events/", views.get_events, name="get_events"),

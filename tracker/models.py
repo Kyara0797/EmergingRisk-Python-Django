@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.forms import ValidationError
 from django.urls import reverse
 from django.utils import timezone 
+import uuid
 
 STATUS_CHOICES = [
     ('HORIZON SCANNING', 'Horizon Scanning'),
@@ -268,8 +269,6 @@ LINE_OF_BUSINESS_CHOICES = [
 ]
 
 
-
-
 SOURCE_TYPE_CHOICES = [
     ('Article', 'Article'),
     ('Internal', 'Internal'),
@@ -460,7 +459,7 @@ class Source(models.Model):
     event = models.ForeignKey('tracker.Event', on_delete=models.CASCADE, related_name='sources', db_index=True)
     name = models.CharField(max_length=200)
 
-    # Usa SOLO este campo (elimina cualquier duplicado previo)
+    
     source_type = models.CharField(max_length=10, choices=SOURCE_TYPE_CHOICES, default='FILE')
 
     source_date = models.DateField()
@@ -468,14 +467,17 @@ class Source(models.Model):
 
     POTENTIAL_IMPACT_CHOICES = [
         ('ESCALATING', 'Escalating'),
-        ('MAINTAINING', 'Maintaining'),
         ('DECREASING', 'Decreasing'),
+        ('MAINTAINING', 'Maintaining'),
+        
     ]
     potential_impact = models.CharField(max_length=20, choices=POTENTIAL_IMPACT_CHOICES, blank=True, null=True)
     potential_impact_notes = models.TextField(blank=True, null=True)
 
     link_or_file = models.URLField(max_length=500, blank=True)
     file_upload = models.FileField(upload_to='sources/%Y/%m/%d/', blank=True, null=True)
+
+    download_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_sources')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -491,6 +493,12 @@ class Source(models.Model):
     def __str__(self):
         return f"{self.name} ({self.get_source_type_display()})"
 
+    def has_file(self) -> bool:
+        return bool(self.file_upload)
+
+    def get_download_url(self):
+        
+        return reverse("secure_file_download", args=[str(self.download_token)])
 
 class SourceFileVersion(models.Model):
     source = models.ForeignKey(
@@ -505,12 +513,38 @@ class SourceFileVersion(models.Model):
     replaced_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
     note = models.CharField(max_length=255, blank=True)
 
+    download_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+
     class Meta:
         ordering = ["-replaced_at"]
 
     def __str__(self):
         base = (self.file.name or "").split("/")[-1]
         return f"{base} ({self.replaced_at:%Y-%m-%d})"
+
+    def get_download_url(self):
+        return reverse("secure_file_download", args=[str(self.download_token)])
+    
+
+class DownloadLog(models.Model):
+    when       = models.DateTimeField(auto_now_add=True)
+    user       = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    ip         = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, default="")
+    object_key = models.TextField()   
+    token      = models.UUIDField()   
+
+    class Meta:
+        ordering = ['-when']
+        indexes  = [
+            models.Index(fields=['-when']),
+            models.Index(fields=['token']),
+        ]
+
+    def __str__(self):
+        who = self.user.username if self.user else "anonymous"
+        return f"{self.when:%Y-%m-%d %H:%M:%S} - {who} -> {self.object_key}"
+
 
 class UserAccessLog(models.Model):
     user = models.ForeignKey(
