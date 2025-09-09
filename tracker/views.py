@@ -10,7 +10,7 @@ from django.core.paginator import Paginator
 from django.views.generic import UpdateView, DeleteView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.conf import settings
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, Http404
 from collections import OrderedDict
 
 from .models import (
@@ -24,11 +24,17 @@ from .forms import ThemeForm, EventForm, SourceForm, RegisterForm
 import json
 import os
 from urllib.parse import urlparse
-
-import uuid
-from django.core.files.base import File  # para reasignar archivos
-from .models import TempUpload 
 from datetime import date
+import uuid
+import logging
+
+from django.core import signing  # para tokens firmados (no requieren migraciones)
+from django.core.files.base import File  # para reasignar archivos
+
+from .models import TempUpload
+
+# Logger simple para auditoría básica (en logs del servidor)
+logger = logging.getLogger(__name__)
 
 def is_admin(user):
     return user.is_authenticated and (user.is_staff or user.is_superuser)
@@ -38,6 +44,7 @@ admin_required = user_passes_test(is_admin)
 class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     def test_func(self):
         return is_admin(self.request.user)
+
 # Extensiones permitidas para archivos
 ALLOWED_FILE_EXTS = {".pdf", ".doc", ".docx", ".eml", ".msg"}
 
@@ -116,7 +123,7 @@ def _selected_lists_from_event_or_initial(event: Event | None, form_initial: dic
 
 
 def _valid_link(v: str) -> bool:
-    v = (v or "").trim() if hasattr(str, 'trim') else (v or "").strip()
+    v = (v or "").strip()
     if not v:
         return False
     if v.startswith("mailto:"):
@@ -225,6 +232,37 @@ def _has_any_attachment(leader, extra_links, extra_files):
     if extra_files:
         return True
     return False
+
+
+# === Tokens firmados para descargas (no requieren campos/migraciones) ===
+
+_TOKEN_SALT = "source-download-v1"
+
+def _make_download_token(kind: str, obj_id: int) -> str:
+    """
+    kind: 'S' (Source) | 'V' (SourceFileVersion)
+    obj_id: PK del objeto
+    """
+    return signing.dumps({"k": kind, "i": obj_id}, salt=_TOKEN_SALT)
+
+def _parse_download_token(token: str) -> tuple[str, int]:
+    data = signing.loads(token, salt=_TOKEN_SALT, max_age=None)
+    return data["k"], int(data["i"])
+
+def _download_url_for_source(src: Source) -> str:
+    token = _make_download_token("S", src.pk)
+    return reverse("secure_file_download", args=[token])
+
+def _download_url_for_version(ver: SourceFileVersion) -> str:
+    token = _make_download_token("V", ver.pk)
+    return reverse("secure_file_download", args=[token])
+
+
+def _client_ip(request):
+    xfwd = request.META.get("HTTP_X_FORWARDED_FOR")
+    if xfwd:
+        return xfwd.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
 
 
 # =========================================================
@@ -373,6 +411,8 @@ def toggle_theme_active(request, pk):
     theme.save(update_fields=['is_active'])
     messages.success(request, "Threat restored." if theme.is_active else "Threat archived.")
     return redirect(request.META.get('HTTP_REFERER') or 'theme_list_all')
+
+
 # =========================================================
 # Events
 # =========================================================
@@ -422,7 +462,7 @@ def event_list(request):
         'events': events,
         'is_paginated': False,
         'search_query': q or '',
-        'sort': sort,
+               'sort': sort,
         'show_archived': show_archived,
         'is_admin': is_admin(request.user),
     })
@@ -528,6 +568,13 @@ def view_event(request, event_id):
             return [lv3_map.get(v, v) for v in (event.risk_taxonomy_lv3 or [])]
         return []
 
+    # ==== Enlazamos métodos get_download_url (tokens firmados) para usar en templates ====
+    for b in bundles:
+        leader = b["leader"]
+        leader.get_download_url = lambda s=leader: _download_url_for_source(s)
+        for item in b["items"]:
+            item.get_download_url = lambda s=item: _download_url_for_source(s)
+
     context = {
         "event": event,
         "source_bundles": bundles,
@@ -536,7 +583,7 @@ def view_event(request, event_id):
         "show_archived": show_archived,
         "bundle_count": len(bundles),
         # lo demás que ya pasabas a la plantilla:
-        "impact_lobs_display": event.impacted_lines if hasattr(event, "impacted_lines") else [],  # fallback if no function
+        "impact_lobs_display": event.impacted_lines if hasattr(event, "impacted_lines") else [],
         "risk_lv1_labels": get_risk_labels(event, level=1),
         "risk_lv2_labels": get_risk_labels(event, level=2),
         "risk_lv3_labels": get_risk_labels(event, level=3),
@@ -564,6 +611,10 @@ class EventDetailView(DetailView):
         sources = _leaders_only(sources)
 
         lv1_labels, lv2_labels, lv3_labels = _taxonomy_label_lists(event)
+
+        # Enlazar get_download_url en leaders
+        for s in sources:
+            s.get_download_url = lambda x=s: _download_url_for_source(x)
 
         ctx.update({
             'risk_lv1_labels': lv1_labels,
@@ -742,6 +793,11 @@ def source_detail(request, pk):
         source_date=src.source_date
     ).order_by("-is_active", "id")
 
+    # Enlazar método get_download_url (token) para src y cada item del bundle
+    src.get_download_url = lambda s=src: _download_url_for_source(s)
+    for s in bundle_items:
+        s.get_download_url = lambda x=s: _download_url_for_source(x)
+
     bundle_links = []
     bundle_files = []
 
@@ -773,6 +829,11 @@ def source_detail(request, pk):
                 "id": item.id
             })
 
+    # Enlazar get_download_url para versiones históricas
+    versions = list(src.file_history.all())
+    for v in versions:
+        v.get_download_url = lambda x=v: _download_url_for_version(x)
+
     return render(
         request,
         "tracker/source_detail.html",
@@ -782,7 +843,7 @@ def source_detail(request, pk):
             "bundle_links": bundle_links,
             "bundle_files": bundle_files,
             "preview_pdf_url": next((f["url"] for f in bundle_files if f["is_pdf"]), None),
-            "file_history": src.file_history.all(),
+            "file_history": versions,
         },
     )
 
@@ -796,6 +857,12 @@ class SourceDetailView(DetailView):
         leader = self.object
 
         bundle_qs = Source.objects.filter(**_bundle_filter_dict(leader)).order_by("id")
+
+        # Enlazar get_download_url en leader e items
+        leader.get_download_url = lambda s=leader: _download_url_for_source(s)
+        for s in bundle_qs:
+            s.get_download_url = lambda x=s: _download_url_for_source(x)
+
         ctx["bundle_items"] = bundle_qs
 
         links, files = [], []
@@ -824,6 +891,13 @@ class SourceDetailView(DetailView):
         ctx["bundle_links"] = links
         ctx["bundle_files"] = files
         ctx["preview_pdf_url"] = next((f["url"] for f in files if f.get("is_pdf")), None)
+
+        # versiones con URL segura
+        versions = list(leader.file_history.all())
+        for v in versions:
+            v.get_download_url = lambda x=v: _download_url_for_version(x)
+        ctx["file_history"] = versions
+
         return ctx
 
 
@@ -1198,6 +1272,11 @@ def edit_source(request, pk):
         source_date=src.source_date
     ).order_by("-is_active", "id")
 
+    # Enlazar get_download_url
+    src.get_download_url = lambda s=src: _download_url_for_source(s)
+    for s in bundle_items:
+        s.get_download_url = lambda x=s: _download_url_for_source(x)
+
     existing_links = [item.link_or_file for item in bundle_items if item.link_or_file and item.id != src.id]
     existing_summaries = list(Source.objects.filter(event=event).exclude(pk=src.pk).values_list("summary", flat=True))
 
@@ -1263,6 +1342,57 @@ def add_source_redirect(request):
         return redirect("add_source", event_pk=first_event.pk)
     messages.warning(request, "Please create an Event first")
     return redirect("dashboard")
+
+
+# =========================================================
+# DESCARGA SEGURA (redirige a archivo/link; token firmado)
+# =========================================================
+
+def secure_file_download(request, token: str):
+    """
+    Recibe un token firmado (no expira) que identifica:
+      - Source (kind='S')   => usa file_upload si existe, si no link_or_file
+      - SourceFileVersion (kind='V') => siempre file
+    Redirige a la URL del storage (si es archivo) o al link http(s)/mailto:.
+    """
+    try:
+        kind, obj_id = _parse_download_token(token)
+    except signing.BadSignature:
+        raise Http404("Invalid download token")
+
+    obj = None
+    if kind == "S":
+        obj = get_object_or_404(Source, pk=obj_id)
+        # Auditoría ligera vía logs (puedes mover a un modelo si lo deseas)
+        logger.info(
+            "DOWNLOAD Source id=%s by=%s ip=%s ua=%s",
+            obj_id,
+            request.user.id if request.user.is_authenticated else "anon",
+            _client_ip(request),
+            request.META.get("HTTP_USER_AGENT", "")[:200],
+        )
+        if obj.file_upload:
+            return redirect(obj.file_upload.url)
+        elif obj.link_or_file:
+            return redirect(obj.link_or_file)
+        else:
+            raise Http404("No file or link in this Source")
+
+    elif kind == "V":
+        ver = get_object_or_404(SourceFileVersion, pk=obj_id)
+        logger.info(
+            "DOWNLOAD Version id=%s (source=%s) by=%s ip=%s ua=%s",
+            obj_id,
+            ver.source_id,
+            request.user.id if request.user.is_authenticated else "anon",
+            _client_ip(request),
+            request.META.get("HTTP_USER_AGENT", "")[:200],
+        )
+        if ver.file:
+            return redirect(ver.file.url)
+        raise Http404("Version has no file")
+
+    raise Http404("Unknown token kind")
 
 
 # =========================================================
@@ -1358,3 +1488,31 @@ def _clear_staged(batch_id: str, only_ids: list[int] | None = None):
     if only_ids:
         qs = qs.filter(id__in=only_ids)
     qs.delete()
+
+
+# tracker/forms.py
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth import get_user_model
+from django import forms
+
+User = get_user_model()
+
+class CreateUserForm(UserCreationForm):
+    email = forms.EmailField(required=True)
+
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ("username", "email")
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+        if email and User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("Email is already in use.")
+        return email
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.cleaned_data["email"].strip().lower()
+        if commit:
+            user.save()
+        return user

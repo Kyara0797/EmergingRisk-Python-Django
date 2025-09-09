@@ -122,7 +122,8 @@
                         <small class="text-muted d-block">Current file:</small>
                         <div class="d-flex align-items-center gap-1 text-truncate" style="max-width: 100%;">
                           <i class="fas fa-paperclip"></i>
-                          <a href="{{ object.file_upload.url }}" target="_blank" class="text-truncate d-inline-block" style="max-width: 320px;">
+                          <!-- ✅ usa token -->
+                          <a href="{{ object.get_download_url }}" target="_blank" class="text-truncate d-inline-block" style="max-width: 320px;">
                             {{ object.file_upload.name }}
                           </a>
                         </div>
@@ -183,7 +184,8 @@
                                   <td class="text-muted">{{ forloop.revcounter }}</td>
                                   <td class="text-truncate" style="max-width: 360px;">
                                     <i class="fas fa-paperclip me-1"></i>
-                                    <a href="{{ v.file.url }}" target="_blank" rel="noopener" class="text-truncate d-inline-block" style="max-width: 340px;">
+                                    <!-- ✅ usa token -->
+                                    <a href="{{ v.get_download_url }}" target="_blank" rel="noopener" class="text-truncate d-inline-block" style="max-width: 340px;">
                                       {{ v.file.name }}
                                     </a>
                                   </td>
@@ -192,7 +194,8 @@
                                   <td>{{ v.size_mb|default_if_none:"—"|floatformat:2 }}{% if v.size_mb %} MB{% endif %}</td>
                                   <td class="text-truncate" title="{{ v.note }}">{{ v.note|default:"—" }}</td>
                                   <td class="text-end">
-                                    <a class="btn btn-outline-secondary btn-sm" href="{{ v.file.url }}" target="_blank" rel="noopener">
+                                    <!-- ✅ usa token -->
+                                    <a class="btn btn-outline-secondary btn-sm" href="{{ v.get_download_url }}" target="_blank" rel="noopener">
                                       <i class="fas fa-download me-1"></i>Download
                                     </a>
                                   </td>
@@ -311,15 +314,23 @@
                     </td>
                     <td style="max-width:480px;">
                       {% if s.file_upload %}
-                        <a href="{{ s.file_upload.url }}" target="_blank" rel="noopener"
+                        <!-- ✅ usa token -->
+                        <a href="{{ s.get_download_url }}" target="_blank" rel="noopener"
                            class="text-truncate d-inline-block" style="max-width: 440px; overflow-wrap:anywhere;">
                            <i class="fas fa-paperclip me-1"></i>{{ s.file_upload.name }}
                         </a>
                       {% elif s.link_or_file %}
-                        <a href="{{ s.link_or_file }}" target="_blank" rel="noopener"
-                           class="text-truncate d-inline-block" style="max-width: 440px; overflow-wrap:anywhere;">
-                           <i class="fas fa-external-link-alt me-1"></i>{{ s.link_or_file }}
-                        </a>
+                        {% if s.link_or_file|slice:":7" == "mailto:" %}
+                          <a href="{{ s.link_or_file }}" class="text-truncate d-inline-block" style="max-width: 440px; overflow-wrap:anywhere;">
+                            <i class="fas fa-envelope me-1"></i>{{ s.link_or_file }}
+                          </a>
+                        {% else %}
+                          <!-- ✅ usa token para auditar saltos http/https -->
+                          <a href="{{ s.get_download_url }}" target="_blank" rel="noopener"
+                             class="text-truncate d-inline-block" style="max-width: 440px; overflow-wrap:anywhere;">
+                             <i class="fas fa-external-link-alt me-1"></i>{{ s.link_or_file }}
+                          </a>
+                        {% endif %}
                       {% else %}
                         <em class="text-muted">—</em>
                       {% endif %}
