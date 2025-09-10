@@ -55,7 +55,7 @@ urlpatterns = [
     path("source/<int:pk>/delete/", views.SourceDeleteView.as_view(), name="delete_source"),
     path("source/<int:pk>/toggle/", views.toggle_source_active, name="toggle_source_active"),
     path("f/<uuid:token>/", views_downloads.secure_file_download, name="secure_file_download"),
-    path("f/<str:token>/", tracker_views.secure_file_download, name="secure_file_download"),
+    path("f/<uuid:token>/", views_downloads.secure_file_download, name="secure_file_download"),
 
     # AJAX helpers
     path("ajax/themes/", views.get_themes, name="get_themes"),
