@@ -5,22 +5,23 @@ from config import settings
 from django.conf.urls.static import static
 
 from tracker import views_downloads
+from django.contrib.auth import views as auth_views
+from .forms import EmailOrUsernameAuthenticationForm
 
 
 urlpatterns = [
-    # path("login/", auth_views.LoginView.as_view(
-    #     template_name="registration/login.html"
-    # ), name="login"),
-    # path("logout/", tracker_views.custom_logout, name="logout"),
-    # path("register/", tracker_views.register, name="register"),
+    
+     path("login/", auth_views.LoginView.as_view(
+        template_name="registration/login.html",
+        authentication_form=EmailOrUsernameAuthenticationForm  
+    ), name="login"),
+    path("logout/", tracker_views.custom_logout, name="logout"),
+    path("register/", tracker_views.register, name="register"),
     
     # Home / dashboard
     
     path("", views.dashboard, name="dashboard"),
-    # path("", RedirectView.as_view(pattern_name="dashboard", permanent=False)),
-    # path("accounts/", include("django.contrib.auth.urls")),
     
-    # path("admin/", admin.site.urls),
     
     # Threat
     path("themes/all/", views.theme_list_all, name="theme_list_all"),

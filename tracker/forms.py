@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils.safestring import mark_safe
@@ -7,7 +7,7 @@ from datetime import date, datetime, time
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from urllib.parse import urlparse
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate
 from .models import Source
 from urllib.parse import urlparse
 
@@ -494,3 +494,39 @@ class RegisterForm(UserCreationForm):
         if User.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError("This email is already registered.")
         return email
+
+
+class EmailOrUsernameAuthenticationForm(AuthenticationForm):
+    username = forms.CharField(
+        label="Email or username",
+        widget=forms.TextInput(attrs={"autofocus": True}),
+    )
+
+    def clean(self):
+        # Tomamos los datos crudos (no usar solo cleaned_data porque el base clean los setea al final)
+        identifier = (self.data.get("username") or "").strip()
+        password = self.data.get("password")
+
+        User = get_user_model()
+        user_cache = None
+
+        if identifier and "@" in identifier:
+            # Parece e-mail: buscamos case-insensitive y autenticamos con el username real
+            try:
+                user_obj = User.objects.get(email__iexact=identifier)
+                user_cache = authenticate(self.request, username=user_obj.get_username(), password=password)
+            except User.DoesNotExist:
+                user_cache = None
+        else:
+            # Es username directo
+            user_cache = authenticate(self.request, username=identifier, password=password)
+
+        if user_cache is None:
+            raise self.get_invalid_login_error()
+
+        self.confirm_login_allowed(user_cache)
+        self.user_cache = user_cache
+        # Seteamos cleaned_data para compatibilidad con el LoginView
+        self.cleaned_data["username"] = identifier
+        self.cleaned_data["password"] = password
+        return self.cleaned_data
