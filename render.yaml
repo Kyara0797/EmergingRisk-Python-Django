@@ -1,11 +1,10 @@
-# render.yaml
 services:
   - type: web
-    runtime: python            # <- en Blueprints moderno es "runtime", no "env"
-    name: mi-app               # cambia el nombre si quieres
-    plan: starter              # free/starter/standard/pro...
-    region: oregon             # o ohio/virginia/frankfurt/singapore
-    autoDeployTrigger: commit  # deploy en cada commit a la rama conectada
+    name: emerging-risk-tracker
+    env: python
+    plan: starter
+    region: oregon
+    autoDeploy: true
 
     buildCommand: >
       pip install -r requirements.txt &&
@@ -17,41 +16,24 @@ services:
     startCommand: >
       gunicorn config.wsgi:application
 
-    healthCheckPath: /         # opcional, ayuda a zero-downtime
+    healthCheckPath: /
 
     envVars:
-      # Version de Python (opcional pero recomendado)
-      - key: PYTHON_VERSION
-        value: 3.11.9
-
-      # Django (ajústalo si tu módulo es otro)
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings
-
-      # === Config de MEDIA para S3/compatibles (Render) ===
+      - key: PYTHON_VERSION
+        value: 3.11.9
       - key: MEDIA_PROVIDER
-        value: s3
-      - key: MEDIA_VISIBILITY
-        value: private
-      - key: AWS_STORAGE_BUCKET_NAME
-        value: mi-bucket
-      - key: AWS_S3_REGION_NAME
-        value: us-east-1
-
-      # Dominios/CSRF (ajusta a tu dominio si usas uno propio)
+        value: filesystem
+      - key: MEDIA_ROOT
+        value: /opt/render/project/src/media
+      #Recommended for domains
       - key: ALLOWED_HOSTS
-        value: .onrender.com,midominio.com
+        value: .onrender.com,localhost,127.0.0.1
       - key: CSRF_TRUSTED_ORIGINS
-        value: https://*.onrender.com,https://midominio.com
+        value: https://*.onrender.com
 
-      # === Secrets: los completas en el panel tras crear el Blueprint ===
-      - key: AWS_ACCESS_KEY_ID
-        sync: false
-      - key: AWS_SECRET_ACCESS_KEY
-        sync: false
-
-      # (Opcionales) para R2/Spaces/Backblaze/MinIO o CDN propio:
-      # - key: AWS_S3_ENDPOINT_URL
-      #   value: https://<endpoint>
-      # - key: AWS_S3_CUSTOM_DOMAIN
-      #   value: media.midominio.com
+    disk:
+      name: media
+      mountPath: /opt/render/project/src/media
+      sizeGB: 1
