@@ -24,7 +24,8 @@ from tracker.forms import EmailOrUsernameAuthenticationForm
 urlpatterns = [
     
     path("admin/", admin.site.urls),
-    path("", include("tracker.urls")),  # << SOLO incluye la app
+    path("", include("tracker.urls")),
+
     path(
         "login/",
         auth_views.LoginView.as_view(
@@ -34,12 +35,7 @@ urlpatterns = [
         name="login",
     ),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
-    # path('admin/', admin.site.urls),
-    path('', include('tracker.urls')),
-    path('register/', tracker_views.register, name='register'),
-    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
-    path('admin/access-logs/', tracker_views.access_logs, name='access_logs'),
+    
 ]
 # ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

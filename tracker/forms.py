@@ -496,76 +496,16 @@ class RegisterForm(UserCreationForm):
         return email
 
 
-class EmailOrUsernameAuthenticationForm(forms.Form):
-    username = forms.CharField(label="Email or username")
-    password = forms.CharField(widget=forms.PasswordInput)
-
-    error_messages = {
-        "invalid_login": "Invalid credentials.",
-        "inactive": "This account is inactive.",
-    }
-
-    def __init__(self, request=None, *args, **kwargs):
-        self.request = request
-        self.user_cache = None
-        super().__init__(*args, **kwargs)
-
+class EmailOrUsernameAuthenticationForm(AuthenticationForm):
+   
     def clean(self):
-        cleaned = super().clean()
-        username = cleaned.get("username")
-        password = cleaned.get("password")
-
-        if not username or not password:
-            return cleaned
-
-        # Si parece email, intenta mapearlo a username real
-        if "@" in username:
-            User = get_user_model()
+        cd = super().clean()
+        username = cd.get("username")
+        if username and "@" in username:
+            U = get_user_model()
             try:
-                user_obj = User.objects.get(email__iexact=username.strip())
-                username = user_obj.get_username()
-            except User.DoesNotExist:
+                user = U.objects.get(email__iexact=username.strip())
+                self.cleaned_data["username"] = user.username
+            except U.DoesNotExist:
                 pass
-
-        self.user_cache = authenticate(self.request, username=username, password=password)
-        if self.user_cache is None:
-            raise forms.ValidationError(self.error_messages["invalid_login"], code="invalid_login")
-        if not self.user_cache.is_active:
-            raise forms.ValidationError(self.error_messages["inactive"], code="inactive")
-        return cleaned
-
-    def get_user(self):
-        return self.user_cache
-    username = forms.CharField(
-        label="Email or username",
-        widget=forms.TextInput(attrs={"autofocus": True}),
-    )
-
-    def clean(self):
-        # Tomamos los datos crudos (no usar solo cleaned_data porque el base clean los setea al final)
-        identifier = (self.data.get("username") or "").strip()
-        password = self.data.get("password")
-
-        User = get_user_model()
-        user_cache = None
-
-        if identifier and "@" in identifier:
-            # Parece e-mail: buscamos case-insensitive y autenticamos con el username real
-            try:
-                user_obj = User.objects.get(email__iexact=identifier)
-                user_cache = authenticate(self.request, username=user_obj.get_username(), password=password)
-            except User.DoesNotExist:
-                user_cache = None
-        else:
-            # Es username directo
-            user_cache = authenticate(self.request, username=identifier, password=password)
-
-        if user_cache is None:
-            raise self.get_invalid_login_error()
-
-        self.confirm_login_allowed(user_cache)
-        self.user_cache = user_cache
-        # Seteamos cleaned_data para compatibilidad con el LoginView
-        self.cleaned_data["username"] = identifier
-        self.cleaned_data["password"] = password
-        return self.cleaned_data
+        return cd
