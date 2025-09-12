@@ -495,17 +495,18 @@ class RegisterForm(UserCreationForm):
             raise forms.ValidationError("This email is already registered.")
         return email
 
-
 class EmailOrUsernameAuthenticationForm(AuthenticationForm):
-   
+    """Permite loguear con email o username usando solo ModelBackend."""
     def clean(self):
         cd = super().clean()
         username = cd.get("username")
         if username and "@" in username:
             U = get_user_model()
             try:
-                user = U.objects.get(email__iexact=username.strip())
+                user = U.objects.get(email__iexact=username)
+                # traducir email -> username real (lo que espera el backend por defecto)
                 self.cleaned_data["username"] = user.username
             except U.DoesNotExist:
+                # dejar el valor; fallará como credenciales inválidas normales
                 pass
         return cd

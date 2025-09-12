@@ -1,0 +1,9 @@
+<!-- templates/registration/register_disabled.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <h1>Registration disabled</h1>
+  <p>User registration is not available. Please log in with an existing account.</p>
+  <p><a href="{% url 'login' %}">Go to login</a></p>
+</div>
+{% endblock %}

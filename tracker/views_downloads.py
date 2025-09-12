@@ -5,7 +5,6 @@ from django.core.files.storage import default_storage
 from django.contrib.auth.decorators import login_required
 from django.utils.encoding import smart_str
 from django.db import transaction
-
 from tracker.models import Source, SourceFileVersion, DownloadLog
 
 def _resolve_object(tok: uuid.UUID):
@@ -42,10 +41,11 @@ def secure_file_download(request, token):
             token=tok,
         )
 
+    # Filesystem: local stream
     try:
         local_path = storage.path(path)
         filename = os.path.basename(local_path)
         return FileResponse(open(local_path, "rb"), as_attachment=True, filename=smart_str(filename))
     except NotImplementedError:
-        # /Azure
+        # Para S3/Azure privado: aquí iría redirección a URL firmada.
         raise Http404("Storage not supported in this mode.")
