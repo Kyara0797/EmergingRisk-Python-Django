@@ -5,18 +5,20 @@ from config import settings
 from django.conf.urls.static import static
 
 from tracker import views_downloads
+from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from .forms import EmailOrUsernameAuthenticationForm
 
 
 urlpatterns = [
     
-     path("login/", auth_views.LoginView.as_view(
+    path("admin/", admin.site.urls),
+    path("", include("tracker.urls")),
+    path("login/", auth_views.LoginView.as_view(
         template_name="registration/login.html",
-        authentication_form=EmailOrUsernameAuthenticationForm  
+        authentication_form=EmailOrUsernameAuthenticationForm
     ), name="login"),
-    path("logout/", tracker_views.custom_logout, name="logout"),
-    path("register/", tracker_views.register, name="register"),
+    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     
     # Home / dashboard
     

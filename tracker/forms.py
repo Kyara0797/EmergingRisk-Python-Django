@@ -496,7 +496,46 @@ class RegisterForm(UserCreationForm):
         return email
 
 
-class EmailOrUsernameAuthenticationForm(AuthenticationForm):
+class EmailOrUsernameAuthenticationForm(forms.Form):
+    username = forms.CharField(label="Email or username")
+    password = forms.CharField(widget=forms.PasswordInput)
+
+    error_messages = {
+        "invalid_login": "Invalid credentials.",
+        "inactive": "This account is inactive.",
+    }
+
+    def __init__(self, request=None, *args, **kwargs):
+        self.request = request
+        self.user_cache = None
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        cleaned = super().clean()
+        username = cleaned.get("username")
+        password = cleaned.get("password")
+
+        if not username or not password:
+            return cleaned
+
+        # Si parece email, intenta mapearlo a username real
+        if "@" in username:
+            User = get_user_model()
+            try:
+                user_obj = User.objects.get(email__iexact=username.strip())
+                username = user_obj.get_username()
+            except User.DoesNotExist:
+                pass
+
+        self.user_cache = authenticate(self.request, username=username, password=password)
+        if self.user_cache is None:
+            raise forms.ValidationError(self.error_messages["invalid_login"], code="invalid_login")
+        if not self.user_cache.is_active:
+            raise forms.ValidationError(self.error_messages["inactive"], code="inactive")
+        return cleaned
+
+    def get_user(self):
+        return self.user_cache
     username = forms.CharField(
         label="Email or username",
         widget=forms.TextInput(attrs={"autofocus": True}),
