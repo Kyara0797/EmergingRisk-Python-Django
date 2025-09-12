@@ -20,8 +20,21 @@ from django.contrib.auth import views as auth_views
 from config import settings
 from tracker import views as tracker_views
 from django.conf.urls.static import static
+from tracker.forms import EmailOrUsernameAuthenticationForm
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    
+    path("admin/", admin.site.urls),
+    path("", include("tracker.urls")),  # << SOLO incluye la app
+    path(
+        "login/",
+        auth_views.LoginView.as_view(
+            template_name="registration/login.html",
+            authentication_form=EmailOrUsernameAuthenticationForm,
+        ),
+        name="login",
+    ),
+    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    # path('admin/', admin.site.urls),
     path('', include('tracker.urls')),
     path('register/', tracker_views.register, name='register'),
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
